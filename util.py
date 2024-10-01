@@ -13,19 +13,6 @@ from PIL import Image, ImageDraw
 # Utility functions
 #===================================================================================================
 
-def timing(func):
-    """
-    Decorator to measure the time of execution of a function.
-    """
-    def inner1(*args, **kwargs):
-        #logger = get_logger()
-        begin = time.time()
-        ret = func(*args, **kwargs)
-        end = time.time()
-        #logger.info(f" {func.__name__:50}:{end - begin:8.3f}s")
-        return ret
-    return inner1
-
 
 def read_img(img_path):
     """

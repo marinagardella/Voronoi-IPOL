@@ -84,7 +84,6 @@ def close_logger(logger):
             handler.close()
 
 
-@timing 
 def get_binary_image(img,args,logger):
     """
     " The input to the pipeline described in [1] is assumed to be a binary image where the characters are ON pixels.
@@ -138,7 +137,6 @@ def get_binary_image(img,args,logger):
         return img
 
 
-@timing
 def get_connected_components(img,args,logger):
     #
     # OPTIONAL STEP: remove small blobs
@@ -157,7 +155,6 @@ def get_connected_components(img,args,logger):
     return labels
 
 
-@timing
 def get_borders(labels,args,logger):
     """
     This returns the _inner_ borders of the connected components.
@@ -168,7 +165,6 @@ def get_borders(labels,args,logger):
     return labels != aux
 
 
-@timing
 def sample_border_points(borders,args,logger):
     """
     The paper [1] does not specify how to sample the border points.
@@ -214,7 +210,6 @@ def sample_border_points(borders,args,logger):
         return borders
 
 
-@timing
 def get_point_voronoi(borders,args,logger):
     """  
     Compute the Voronoi diagram of the border points.
@@ -255,7 +250,6 @@ def get_point_voronoi(borders,args,logger):
     return  spatial.Voronoi(border_points)
 
 
-@timing
 def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
     """
     " prune ridges that are not separating different connected components
@@ -278,7 +272,6 @@ def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
     return criteria
 
 
-@timing 
 def compute_ridge_features(points,labels,ridge_points,logger):
     """
     " compute the features dE and arE for each ridge E
@@ -333,7 +326,6 @@ def compute_ridge_features(points,labels,ridge_points,logger):
     return dE,arE
 
 
-@timing
 def compute_thresholds(dE,args,logger):
     """
     " Compute the distance thresholds t1 and t2, and the area threshold ta
@@ -468,7 +460,6 @@ def compute_thresholds(dE,args,logger):
     return t1,t2,args.parameter_ta
 
 
-@timing
 def eval_pruning_criteria(dE, arE, t1, t2, ta):
     assert(len(dE) == len(arE))
     N = len(dE)
@@ -483,7 +474,6 @@ def eval_loop_condition(ridge_vertices):
     return [(rv[0] == -1 or rv[0] in shared) and (rv[1] == -1 or rv[1] in shared) for rv in ridge_vertices]
 
 
-@timing
 def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
     """
     " prune ridges that do not belong to the frontier between text areas.
@@ -509,7 +499,6 @@ def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
     return np.array(ridge_vertices),np.array(ridge_points)
 
 
-@timing
 def area_voronoi_dla(fname,args):
     """
     " Main algorithm defined in paper [1]
