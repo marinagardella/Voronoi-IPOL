@@ -26,7 +26,11 @@ Other papers involved:
     in 2022 IEEE International Conference on Image Processing (ICIP), Bordeaux, France: 
     IEEE, Oct. 2022, pp. 196–200. doi: 10.1109/ICIP46576.2022.9897678.
 """
-# 
+
+#==============================================================================
+# IMPORTS
+#==============================================================================
+#
 # core Python modules
 #
 import os
@@ -49,32 +53,35 @@ from scipy import signal
 
 from util import * 
 #
-# compiled C extensions
-# will fall back to Python of not found
-#
-#try:
-#    sys.path.append(os.path.dirname(__file__))
-#    import vorlib
-#    compiled = True
-#except ImportError:
-#    compiled = False
-#    print('NOTE: Compiled extension not found. Falling back to Python implementation.')
-
-
-#
-# constants
+#==============================================================================
+# CONSTANTS
+#==============================================================================
 #
 DPI = 300
-
+#
+#==============================================================================
+# FUNCTIONS
+#==============================================================================
+#
 def get_logger(fname):
     """
-    Singleton logger function
+    Create a logger object
     """
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("VORONOI")
     flog = open(fname,'w')
     logger.addHandler(logging.StreamHandler(flog))
     return logger
+
+
+def close_logger(logger):
+    """
+    Close a logger object
+    """
+    if logger is not None:
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+            handler.close()
 
 
 @timing 
@@ -507,6 +514,11 @@ def area_voronoi_dla(fname,args):
     """
     " Main algorithm defined in paper [1]
     """
+    #
+    #------------------------------------------------------------------------- 
+    # 0. PREPARATION
+    #------------------------------------------------------------------------- 
+    #
     logger = get_logger(args.log_file)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -514,18 +526,22 @@ def area_voronoi_dla(fname,args):
     final_output = f"{args.output}9_final_area_voronoi.npz"
     if os.path.exists(final_output) and not args.recompute:
         logger.info(' ALREADY COMPUTED. Use --recompute to force.')
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
+        close_logger(logger)
         return
+    
     input_img = read_img(fname)
     if args.save_images == "all":
         plt.imsave(f"{args.output}0_input.png",input_img)
     binary_img = get_binary_image(input_img,args,logger)
-    # 
-    # The original paper [1] assumes a binary input. No mention is made of the binarization process
-    # despite the description in the experiments section (Section 5, page 6) indicates that the 
-    # authors produced their own dataset via scanning. 
+    #
+    #------------------------------------------------------------------------- 
+    # 1. BINARIZATION
+    #------------------------------------------------------------------------- 
+    #
+    # The original paper [1] assumes a binary input. No mention is made of the 
+    # binarization process despite the description in the experiments section 
+    # (Section 5, page 6) indicates that the authors produced their own dataset 
+    # via scanning. 
     #
     if args.save_images == "all" or args.save_images == "important":
         write_img(f"{args.output}1_binarized.tif",binary_img)
@@ -535,30 +551,42 @@ def area_voronoi_dla(fname,args):
     if NC < 2:
         logger.warning(f'Less than two connected components in the image. Solutioh is trivial.')
         np.savez(final_output,ridge_points=[],ridge_vertices=[])
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
+        close_logger(logger)
         return
     #
-    # SAMPLE BORDER POINTS
-    # This is the first step actually (partially) specified in the paper.
-    # See description in the function for details.
-
+    #------------------------------------------------------------------------- 
+    # 2. BORDERS EXTRACTION
+    #------------------------------------------------------------------------- 
+    #
     # In order to compute the (approximate) area Voronoi diagram, the authors
-    # sample the borders of the connected components and construct the ordinary point
-    # Voronoi diagram from there. 
+    # sample the borders of the connected components and construct the ordinary 
+    # point Voronoi diagram from there. 
+    #
+    # The borders are obtained by eroding the connected components, so that
+    # the resulting points are inside the corresponding components.
     # 
     borders_img = get_borders(labels,args,logger)
     logger.info(f' Total of {np.sum(borders_img)} border points.')
     if args.save_images == "all":
         write_img(f"{args.output}3_borders.tif",borders_img)
-
+    #
+    #------------------------------------------------------------------------- 
+    # 3. BORDERS SUBSAMPLING
+    #------------------------------------------------------------------------- 
+    #
+    # The paper does not specify how to subsample the borders. 
+    # By default we do so randomly with a probability of 0.1 
+    #
     border_points_img = sample_border_points(borders_img,args,logger)
     if args.save_images == "all":
         write_img(f"{args.output}4_sampled_borders.tif",3*border_points_img+1*borders_img)
     logger.info(f' sampled {np.sum(border_points_img)} border points.')
     #
-    # Now we compute the Voronoi diagram of the border points. This is exactly as described in the paper.
+    #------------------------------------------------------------------------- 
+    # 4. POINT VORONOI DIAGRAM
+    #------------------------------------------------------------------------- 
+    #
+    # Now we compute the Voronoi diagram of the border points.
     #
     if np.sum(border_points_img) < 4:
         logger.warning("Not enough points to construct diagram.")
@@ -567,19 +595,14 @@ def area_voronoi_dla(fname,args):
     pvd = get_point_voronoi(border_points_img,args,logger)
     if pvd is None:
         logger.warning("No borders detected!! Nothing to be done.")
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
+        close_logger(logger)
         return
 
     if len(pvd.ridge_points) == 1:
         logger.warning("Only two connected components. Solution is the only ridge there is.")
         np.savez(final_output,ridge_points=[],ridge_vertices=[])
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
+        close_logger(logger)
         return
-
     #
     # we extract the relevant data from the Voronoi object
     #
@@ -596,7 +619,9 @@ def area_voronoi_dla(fname,args):
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
         write_img(f"{args.output}5_point_voronoi.{args.image_ext}",plotimg)
     #
-    # Next step is to prune the ridges that are not separating different connected components.
+    #------------------------------------------------------------------------- 
+    # 4. APPROXIMATE AREA VORONOI DIAGRAM
+    #------------------------------------------------------------------------- 
     #
     not_redundant = eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices)
     ridge_points = ridge_points[not_redundant]
@@ -608,26 +633,36 @@ def area_voronoi_dla(fname,args):
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
         write_img(f"{args.output}6_pruned_redundant.{args.image_ext}",plotimg)
     #
-    # The next step is to compute the features of the ridges, which are:
+    #------------------------------------------------------------------------- 
+    # 5. PRUNING BY FEATURES
+    #------------------------------------------------------------------------- 
     #
-    # a) d(E), the distances of all ridges (E) to their closest connected component, 
+    # Now ridges of the Area Voronoi Diagram that separate what is assumed to 
+    # be parts of the same text area are removed. This is done using a set of
+    # features. These are:
+    #
+    # a) d(E), the distances of all ridges (E) to their closest connected 
+    #    component,
     # b) ar(E) the area ratio a_r(E) between the components divided by ridge E
     #
     dE,arE = compute_ridge_features(points,labels,ridge_points,logger)
     np.savez(f"{args.output}7_ridge_features.npz",dE=dE,arE=arE)
     #
-    # The next step is to compute the distance thresholds.
-    # T_{d_1} and T_{d_2} are derived from a smoothed version of the histogram of d(E)
+    # The criteria used to remove ridges using the features depend on three
+    # thresholds. 
+    # T_{d_1} and T_{d_2} are derived from a smoothed version of the 
+    # histogram of d(E).
+    # A Third threshold, T_a, is a parameter of the algorithm which is fixed to
+    # 40 for reasons detailed in the paper.
     #    
     t1,t2,ta  = compute_thresholds(dE,args,logger)
     if t1 < 0: # indicates an error in compute_threshold
         logger.warning("Error computing thresholds!")
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
+        close_logger(logger)
         return
     #
-    # the authors proceed to prune those ridges E for which either of the two conditions hold:
+    # Now the actual pruning takes place. 
+    # A ridge E is removed if _either_ of the two following conditions hold:
     #
     # i) d(E)/T_{d_1} < 1                   (8)
     # ii) d(E)/T_{d_2} + a_r(E)/T_{a}  < 1  (9)
@@ -637,9 +672,6 @@ def area_voronoi_dla(fname,args):
     # and (9) indicates that an edge is pruned if EITHER (8) OR (9) is met.
     # As the text is more precise when such criteria were introduced, we 
     # assume that this is an OR, not an AND.
-    #
-    # notice that we do not merge the components. We only delete the 'superfluous' 
-    # ridges.
     #
     ta = args.parameter_ta
     eq8, eq9 = eval_pruning_criteria(dE,arE,t1,t2,ta)
@@ -654,31 +686,41 @@ def area_voronoi_dla(fname,args):
     logger.info(f'\tboth       :{np.sum(eq8_and_9)}.')
     np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
     #
+    # Parenthesis: analysis of the conditions.
+    #
+    # Here we optionally produce a map where the different pruned ridges are
+    # are painted with colors which depend on the conditions used for
+    # pruning them. The surviving ridges are also shown.
+    #
     # only satisfying eq8 gives color (1,1,0) -> yellow 
     # only satisfying eq9 gives color (1,0,1) -> magenta
     # satisfying bot eq88 and eq9 gives color (1,0,0) -> red
     # 
-    
-    ridge_colors = np.outer(np.ones(len(ridge_vertices)),[64,128,192]).astype(np.uint8)
-    print(ridge_colors.shape)
-    for j in range(len(ridge_vertices)):
-        if eq8[j] and eq9[j]: # very pruned
-            ridge_colors[j,:] = [192,192,192]
-        elif eq8[j]:          # strangely pruned
-            ridge_colors[j,:] = [255,0,0]
-        elif eq9[j]:          # reasonably pruned
-            ridge_colors[j,:] = [128,192,192]
-    ridge_colors = list(tuple(r) for r in ridge_colors)
     if args.save_images == "all" or args.save_images == "important":
+        ridge_colors = np.outer(np.ones(len(ridge_vertices)),[64,128,192]).astype(np.uint8)
+        print(ridge_colors.shape)
+        for j in range(len(ridge_vertices)):
+            if eq8[j] and eq9[j]: # very pruned
+                ridge_colors[j,:] = [192,192,192]
+            elif eq8[j]:          # strangely pruned
+                ridge_colors[j,:] = [255,0,0]
+            elif eq9[j]:          # reasonably pruned
+                ridge_colors[j,:] = [128,192,192]
+        ridge_colors = list(tuple(r) for r in ridge_colors)
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
         write_img(f"{args.output}8_pruned_by_features.{args.image_ext}",plotimg)
-
+    #
+    # Now we remove the ridges that do not satisfy the criteria
+    #
     ridge_points= ridge_points[not_prune]
     ridge_vertices = ridge_vertices[not_prune]
     nridges = len(ridge_vertices)
     logger.info(f"Remaining ridges after pruning by criterias (8) and (9): {nridges}")
     np.savez(f"{args.output}8_pruned_by_features.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-    
+    #
+    #------------------------------------------------------------------------- 
+    # 6. LOOP CONDITION
+    #------------------------------------------------------------------------- 
     #
     # the final step is to prune the ridges that do not belong to frontiers
     # between text areas.  These are identified by the authors as those
@@ -699,11 +741,19 @@ def area_voronoi_dla(fname,args):
         plt.close('all')
     np.savez(f"{args.output}9_final_area_voronoi.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
     logger.info("finished.")
-    for handler in logger.handlers:
-        logger.removeHandler(handler)
-        handler.close()
+    close_logger(logger)
+    #
+    #------------------------------------------------------------------------- 
+    # -- END ---
+    #------------------------------------------------------------------------- 
+    #
+
 
 def area_voronoi_dla_mp(rel_fname,args):
+    """
+    " Helper function for running using multiple processors.
+    " Only used when in batch mode.
+    """
     args = copy.deepcopy(args)
     fname = os.path.join(args.base_dir,rel_fname)
     output_rel_dir = os.path.splitext(rel_fname)[0]
@@ -712,35 +762,62 @@ def area_voronoi_dla_mp(rel_fname,args):
     if not os.path.exists(args.output):
         os.makedirs(args.output,exist_ok=True)
     area_voronoi_dla(fname,args) 
-    
 
+
+#
+#==============================================================================
+# MAIN FUNCTION
+#==============================================================================
+#
 if __name__ == "__main__":
     #
     # command line interface via Python's argparse module
     #
     ap = argparse.ArgumentParser(__name__)
-    ap.add_argument("-i", "--input-image", default=None, help="path to the input image")
-    ap.add_argument("-d", "--base-dir", default=".", help="for batch mode, directory where input files are stored. This should give the full path of each input image when concatenated with an entry from the list.")
-    ap.add_argument("-L", "--input-list", default=None, help="path to a list with input image file names (relative to base dir)")
-    ap.add_argument("-l","--log-file", default='voronoi.log', help="Path to output log file.")
-    ap.add_argument("-B", "--binarization-method", type=str, default="otsu", help="Binarization method for non-binary input images.")
-    ap.add_argument("-Y", "--binarization-param", type=float, default=0.5, help="For binarization methods which require a parameter, this is it.")
-    ap.add_argument("-b", "--remove-blobs", type=int, default=4, help="If set to a value larger than zero, this will remove all blobs whose size is smaller than the specified value.")
-    ap.add_argument("-v", "--verbose", action="store_true", help="Print verbose output. Also enables debug mode.")
-    ap.add_argument("-o", "--output", default="voronoi", help="output prefix for all output files. If an input image list is passed, this is assumed to be a directory and output directories will be created below this prefix for each input image.")
-    ap.add_argument("-s","--subsample-method", type=str, default="random", help="How to subsample the borders. grid: intersect with a regular grid. random: intersect with a Bernoulli. file: load points from a text file.")
-    ap.add_argument("-r","--subsample-param", type=str,default='9', help="Subsampling param. Spacing for grids, _inverse_ probability for 'random', or file name for 'file'.")
-    ap.add_argument("-w","--parameter-w", type=int, default=2, help="This is the parameter 'w' in the original paper and defines a window of size 2*w+1 over which the histogram is smoothed by averaging.")
-    ap.add_argument("-t","--parameter-t", type=float, default=0.34, help="Parameter 't' in the paper.")
-    ap.add_argument("-a","--parameter-ta", type=float, default=40, help="This is the parameter 'Ta' in the original paper.")
-    ap.add_argument("-M","--min-peaks-dist", type=int, default=1, help="Minimum distance between peaks in the histogram. Faithful implementation to the paper is 1, but this is clearly a bad idea. Use a value of 5 or more if you get a warning saying peaks are too close, or either leave it as is if you want to evaluate the paper as is.")
-    ap.add_argument("-S","--save-images", type=str,default="result", help="Save images showing the differrent stages. Possible values are 'none', 'result','important' and 'all'.")
-    ap.add_argument("--image-ext", type=str,default="png", help="Image extension for saving diagrams (other stuff is saved as TIFF or PDF).")
-    ap.add_argument("-f","--recompute", action="store_true", help="Force recomputation even if result exists.")
-    ap.add_argument("-R","--seed", type=int, default=42,help="Random seed, for reproducibility.")
-    ap.add_argument("--parameter-t1", type=float, default=-1,help="Parameter T1 in tne paper. This parameter is set automatically. This allows one to fix it to some arbitrary value for testing purposes..")
-    ap.add_argument("--parameter-t2", type=float, default=-1,help="Parameter T2 in tne paper. This parameter is set automatically. This allows one to fix it to some arbitrary value for testing purposes..")
-    ap.add_argument("-T","--max-threads", type=int, default=-1,help="IF larger than one, restrict parallel processes to this number. ")
+    ap.add_argument("-i", "--input-image", default=None, 
+                    help="path to the input image")
+    ap.add_argument("-d", "--base-dir", default=".", 
+                    help="for batch mode, directory where input files are stored. This should give the full path of each input image when concatenated with an entry from the list.")
+    ap.add_argument("-L", "--input-list", default=None, 
+                    help="path to a list with input image file names (relative to base dir)")
+    ap.add_argument("-l","--log-file", default='voronoi.log', 
+                    help="Path to output log file.")
+    ap.add_argument("-B", "--binarization-method", type=str, default="otsu", 
+                    help="Binarization method for non-binary input images.")
+    ap.add_argument("-Y", "--binarization-param", type=float, default=0.5, 
+                    help="For binarization methods which require a parameter, this is it.")
+    ap.add_argument("-b", "--remove-blobs", type=int, default=4, 
+                    help="If set to a value larger than zero, this will remove all blobs whose size is smaller than the specified value.")
+    ap.add_argument("-v", "--verbose", action="store_true", 
+                    help="Print verbose output. Also enables debug mode.")
+    ap.add_argument("-o", "--output", default="voronoi", 
+                    help="output prefix for all output files. If an input image list is passed, this is assumed to be a directory and output directories will be created below this prefix for each input image.")
+    ap.add_argument("-s","--subsample-method", type=str, default="random", 
+                    help="How to subsample the borders. grid: intersect with a regular grid. random: intersect with a Bernoulli. file: load points from a text file.")
+    ap.add_argument("-r","--subsample-param", type=str,default='9', 
+                    help="Subsampling param. Spacing for grids, _inverse_ probability for 'random', or file name for 'file'.")
+    ap.add_argument("-w","--parameter-w", type=int, default=2, 
+                    help="This is the parameter 'w' in the original paper and defines a window of size 2*w+1 over which the histogram is smoothed by averaging.")
+    ap.add_argument("-t","--parameter-t", type=float, default=0.34, 
+                    help="Parameter 't' in the paper.")
+    ap.add_argument("-a","--parameter-ta", type=float, default=40, 
+                    help="This is the parameter 'Ta' in the original paper.")
+    ap.add_argument("-M","--min-peaks-dist", type=int, default=1, 
+                    help="Minimum distance between peaks in the histogram. Faithful implementation to the paper is 1, but this is clearly a bad idea. Use a value of 5 or more if you get a warning saying peaks are too close, or either leave it as is if you want to evaluate the paper as is.")
+    ap.add_argument("-S","--save-images", type=str,default="result", 
+                    help="Save images showing the differrent stages. Possible values are 'none', 'result','important' and 'all'.")
+    ap.add_argument("--image-ext", type=str,default="png", 
+                    help="Image extension for saving diagrams (other stuff is saved as TIFF or PDF).")
+    ap.add_argument("-f","--recompute", action="store_true", 
+                    help="Force recomputation even if result exists.")
+    ap.add_argument("-R","--seed", type=int, default=42,
+                    help="Random seed, for reproducibility.")
+    ap.add_argument("--parameter-t1", type=float, default=-1,
+                    help="Parameter T1 in tne paper. This parameter is set automatically. This allows one to fix it to some arbitrary value for testing purposes..")
+    ap.add_argument("--parameter-t2", type=float, default=-1,
+                    help="Parameter T2 in tne paper. This parameter is set automatically. This allows one to fix it to some arbitrary value for testing purposes..")
+    ap.add_argument("-T","--max-threads", type=int, default=-1,
+                    help="IF larger than one, restrict parallel processes to this number. ")
     args = ap.parse_args()
 
 
@@ -777,16 +854,7 @@ if __name__ == "__main__":
         else:
             with mp.Pool() as pool:
                 pool.starmap(area_voronoi_dla_mp,[(rel_fname,args) for rel_fname in input_images])
-
-
-        #for i,rel_fname in enumerate(input_images):
-        #    fname = os.path.join(args.base_dir,rel_fname)
-        #    output_rel_dir = os.path.splitext(rel_fname)[0]
-        #    args.output = os.path.join(output_base_dir,output_rel_dir) + os.sep
-        #    args.log_file = os.path.join(args.output,'log.txt')
-        #    if not os.path.exists(args.output):
-        #        os.makedirs(args.output,exist_ok=True)
-        #    logger.info(f'{i+1:6}/{nimages:6}: {fname} -> {args.output}')
-        #    img = read_img(fname)
-        #    area_voronoi_dla(img,args) 
     
+#==============================================================================
+# END OF CODE
+#==============================================================================
