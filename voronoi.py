@@ -125,6 +125,7 @@ def get_binary_image(img,args,logger):
         # binarize
         #
         param = args.binarization_param
+        param /=255
         method = args.binarization_method.lower()
         if img.dtype != 'bool':
             if method == "otsu":
