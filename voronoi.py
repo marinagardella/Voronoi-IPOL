@@ -335,7 +335,7 @@ def compute_thresholds(dE,args,logger):
         plt.close('all')
         plt.figure(figsize=(20,15))
         plt.plot(dist_hist,lw=1)
-        plt.savefig(f"{args.output}7a_distance_histogram.pdf",bbox_inches="tight",dpi=DPI)
+        plt.savefig(f"{args.output}7a_distance_histogram.{args.image_ext}",bbox_inches="tight",dpi=DPI)
         plt.close('all')
     #
     #
@@ -395,7 +395,7 @@ def compute_thresholds(dE,args,logger):
         plt.plot(dist_hist_smoothed,lw=1)
         plt.scatter(two_largest_peaks,two_largest_heights,label='peaks',color='red')
         plt.legend()
-        plt.savefig(f"{args.output}7b_dist_hist_smoothed.pdf",bbox_inches="tight",dpi=DPI)
+        plt.savefig(f"{args.output}7b_dist_hist_smoothed.{args.image_ext}",bbox_inches="tight",dpi=DPI)
         plt.close('all')
     #
     # v1 is the smaller distance threshold, v2 is the largest
@@ -533,7 +533,7 @@ def area_voronoi_dla(fname,args):
     # via scanning. 
     #
     if args.save_images == "all" or args.save_images == "important":
-        write_img(f"{args.output}1_binarized.tif",binary_img)
+        write_img(f"{args.output}1_binarized.{args.image_ext}",binary_img)
 
     labels = get_connected_components(binary_img,args,logger)
     NC = np.max(labels)
@@ -557,7 +557,7 @@ def area_voronoi_dla(fname,args):
     borders_img = get_borders(labels,args,logger)
     logger.info(f' Total of {np.sum(borders_img)} border points.')
     if args.save_images == "all":
-        write_img(f"{args.output}3_borders.tif",borders_img)
+        write_img(f"{args.output}3_borders.{args.image_ext}",borders_img)
     #
     #------------------------------------------------------------------------- 
     # 3. BORDERS SUBSAMPLING
@@ -568,7 +568,7 @@ def area_voronoi_dla(fname,args):
     #
     border_points_img = sample_border_points(borders_img,args,logger)
     if args.save_images == "all":
-        write_img(f"{args.output}4_sampled_borders.tif",3*border_points_img+1*borders_img)
+        write_img(f"{args.output}4_sampled_borders.{args.image_ext}",3*border_points_img+1*borders_img)
     logger.info(f' sampled {np.sum(border_points_img)} border points.')
     #
     #------------------------------------------------------------------------- 
@@ -796,7 +796,7 @@ if __name__ == "__main__":
     ap.add_argument("-S","--save-images", type=str,default="result", 
                     help="Save images showing the differrent stages. Possible values are 'none', 'result','important' and 'all'.")
     ap.add_argument("--image-ext", type=str,default="png", 
-                    help="Image extension for saving diagrams (other stuff is saved as TIFF or PDF).")
+                    help="Image extension for saving results.")
     ap.add_argument("-f","--recompute", action="store_true", 
                     help="Force recomputation even if result exists.")
     ap.add_argument("-R","--seed", type=int, default=42,
