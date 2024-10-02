@@ -3,3 +3,8 @@ results/
 venv/
 images/
 myscript.cprof
+*.png
+*.tif
+*.npz
+*.pdf
+*.log

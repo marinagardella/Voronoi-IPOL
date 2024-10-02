@@ -186,9 +186,8 @@ def sample_border_points(borders,args,logger):
         else:
             return borders
     elif args.subsample_method == 'random':
-        inv_prob = float(args.subsample_param)
-        if inv_prob > 1:
-            p = 1/inv_prob
+        p = float(args.subsample_param)
+        if p < 1:
             rng = np.random.default_rng(args.seed)
             grid = rng.uniform(size=borders.shape) < p            
             return borders & grid
@@ -783,7 +782,7 @@ if __name__ == "__main__":
                     help="output prefix for all output files. If an input image list is passed, this is assumed to be a directory and output directories will be created below this prefix for each input image.")
     ap.add_argument("-s","--subsample-method", type=str, default="random", 
                     help="How to subsample the borders. grid: intersect with a regular grid. random: intersect with a Bernoulli. file: load points from a text file.")
-    ap.add_argument("-r","--subsample-param", type=str,default='9', 
+    ap.add_argument("-r","--subsample-param", type=str,default='0.1', 
                     help="Subsampling param. Spacing for grids, _inverse_ probability for 'random', or file name for 'file'.")
     ap.add_argument("-w","--parameter-w", type=int, default=2, 
                     help="This is the parameter 'w' in the original paper and defines a window of size 2*w+1 over which the histogram is smoothed by averaging.")
