@@ -57,7 +57,7 @@ from util import *
 # CONSTANTS
 #==============================================================================
 #
-DPI = 300
+DPI = 150
 #
 #==============================================================================
 # FUNCTIONS
@@ -335,7 +335,7 @@ def compute_thresholds(dE,args,logger):
         plt.close('all')
         plt.figure(figsize=(10,8))
         plt.plot(dist_hist,lw=1)
-        plt.xlim(0,300)
+        plt.xlim(0,200)
         plt.grid(True)
         plt.xlabel('distance (px)')
         plt.ylabel('frequency')
@@ -396,7 +396,7 @@ def compute_thresholds(dE,args,logger):
     if args.save_images == "all" or args.save_images == "important":
         plt.close('all')
         plt.figure(figsize=(10,8))
-        plt.xlim(0,300)
+        plt.xlim(0,200)
         plt.grid(True)
         plt.plot(dist_hist_smoothed,lw=1,label='histogram')
         plt.scatter(two_largest_peaks,two_largest_heights,label='peaks',color='red')
