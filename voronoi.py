@@ -694,16 +694,16 @@ def area_voronoi_dla(fname,args):
     # only satisfying eq9 gives color (1,0,1) -> magenta
     # satisfying bot eq88 and eq9 gives color (1,0,0) -> red
     # 
+    
     if args.save_images == "all" or args.save_images == "important":
-        ridge_colors = np.outer(np.ones(len(ridge_vertices)),[64,128,192]).astype(np.uint8)
-        print(ridge_colors.shape)
+        ridge_colors = np.outer(np.ones(len(ridge_vertices)),[64,0,128]).astype(np.uint8)
         for j in range(len(ridge_vertices)):
             if eq8[j] and eq9[j]: # very pruned
-                ridge_colors[j,:] = [192,192,192]
+                ridge_colors[j,:] = [255,192,64]
             elif eq8[j]:          # strangely pruned
                 ridge_colors[j,:] = [255,0,0]
             elif eq9[j]:          # reasonably pruned
-                ridge_colors[j,:] = [128,192,192]
+                ridge_colors[j,:] = [0,192,32]
         ridge_colors = list(tuple(r) for r in ridge_colors)
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
         write_img(f"{args.output}8_pruned_by_features.{args.image_ext}",plotimg)
