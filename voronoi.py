@@ -333,7 +333,7 @@ def compute_thresholds(dE,args,logger):
     dist_hist = np.bincount(dE) # discrete valued histogram
     if args.save_images == "all":
         plt.close('all')
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(10,5))
         plt.plot(dist_hist,lw=1)
         plt.xlim(0,200)
         plt.grid(True)
@@ -395,7 +395,7 @@ def compute_thresholds(dE,args,logger):
 
     if args.save_images == "all" or args.save_images == "important":
         plt.close('all')
-        plt.figure(figsize=(6,4))
+        plt.figure(figsize=(10,5))
         plt.xlim(0,200)
         plt.grid(True)
         plt.plot(dist_hist_smoothed,lw=1,label='histogram')
