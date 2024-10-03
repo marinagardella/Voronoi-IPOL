@@ -75,7 +75,7 @@ fp.set_size(9)
 
 POINT_COLOR  = (128,128,255)
 VERTEX_COLOR = (255,128,128)
-RIDGE_COLOR  = (64,128,192)
+RIDGE_COLOR  = (64,0,192)
 
 def plot_voronoi(background,
                  points,
