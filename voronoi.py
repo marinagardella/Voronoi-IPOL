@@ -696,7 +696,7 @@ def area_voronoi_dla(fname,args):
     # 
     
     if args.save_images == "all" or args.save_images == "important":
-        ridge_colors = np.outer(np.ones(len(ridge_vertices)),[64,0,128]).astype(np.uint8)
+        ridge_colors = np.outer(np.ones(len(ridge_vertices)),np.array(RIDGE_COLOR)).astype(np.uint8)
         for j in range(len(ridge_vertices)):
             if eq8[j] and eq9[j]: # very pruned
                 ridge_colors[j,:] = [255,192,64]
