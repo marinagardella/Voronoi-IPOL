@@ -339,6 +339,7 @@ def compute_thresholds(dE,args,logger):
         plt.grid(True)
         plt.xlabel('distance (px)')
         plt.ylabel('frequency')
+        plt.legend()
         plt.savefig(f"{args.output}7a_distance_histogram.{args.image_ext}",bbox_inches="tight",dpi=DPI)
         plt.close('all')
     #
