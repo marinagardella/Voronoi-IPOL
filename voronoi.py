@@ -145,7 +145,7 @@ def get_connected_components(img,args,logger):
     if args.remove_blobs:
         img = skmorpth.remove_small_objects(img, min_size=args.remove_blobs)
         if args.save_images == "all":
-            write_img(f"{args.output}1b_removed_small_objects.{args.image_ext}",img)
+            write_img(f"{args.output}1b_removed_small_objects.{args.image_ext}",~img)
     #
     # now we extract the connected components.
     #
@@ -541,7 +541,7 @@ def area_voronoi_dla(fname,args):
     # via scanning. 
     #
     if args.save_images == "all" or args.save_images == "important":
-        write_img(f"{args.output}1_binarized.{args.image_ext}",1-binary_img)
+        write_img(f"{args.output}1_binarized.{args.image_ext}",~binary_img)
 
     labels = get_connected_components(binary_img,args,logger)
     NC = np.max(labels)
