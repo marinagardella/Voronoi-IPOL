@@ -565,7 +565,7 @@ def area_voronoi_dla(fname,args):
     borders_img = get_borders(labels,args,logger)
     logger.info(f' Total of {np.sum(borders_img)} border points.')
     if args.save_images == "all":
-        write_img(f"{args.output}3_borders.{args.image_ext}",1-borders_img)
+        write_img(f"{args.output}3_borders.{args.image_ext}",~borders_img)
     #
     #------------------------------------------------------------------------- 
     # 3. BORDERS SUBSAMPLING
@@ -576,7 +576,7 @@ def area_voronoi_dla(fname,args):
     #
     border_points_img = sample_border_points(borders_img,args,logger)
     if args.save_images == "all":
-        write_img(f"{args.output}4_sampled_borders.{args.image_ext}",4-3*border_points_img+1*borders_img)
+        write_img(f"{args.output}4_sampled_borders.{args.image_ext}",~border_points_img)
     logger.info(f' sampled {np.sum(border_points_img)} border points.')
     #
     #------------------------------------------------------------------------- 
