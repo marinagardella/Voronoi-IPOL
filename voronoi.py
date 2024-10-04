@@ -706,7 +706,7 @@ def area_voronoi_dla(fname,args):
                 ridge_colors[j,:] = [0,192,32]
         ridge_colors = list(tuple(r) for r in ridge_colors)
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
-        legend_img = read_img('fig/legend_small.png')
+        legend_img = read_img('fig/legend_medium.png')
         alpha = legend_img[:,:,3]
         alpha = alpha/(max(1e-4,np.max(alpha)))
         legend_img = legend_img[:,:,:3]
