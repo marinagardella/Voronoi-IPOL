@@ -706,6 +706,16 @@ def area_voronoi_dla(fname,args):
                 ridge_colors[j,:] = [0,192,32]
         ridge_colors = list(tuple(r) for r in ridge_colors)
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
+        legend_img = read_img('fig/legend_small.png')
+        alpha = legend_img[:,:,3]
+        alpha = alpha/(max(1e-4,np.max(alpha)))
+        legend_img = legend_img[:,:,:3]
+        hl,wl,_ = legend_img.shape
+        hp,wp,_ = plotimg.shape
+        #plotimg[0:hl,wp-wl:,:] = legend_img[:,:,0]
+        plotimg[0:hl,wp-wl:,0] = (1-alpha)*plotimg[0:hl,wp-wl:,0] + alpha*legend_img[:,:,0]
+        plotimg[0:hl,wp-wl:,1] = (1-alpha)*plotimg[0:hl,wp-wl:,1] + alpha*legend_img[:,:,1]
+        plotimg[0:hl,wp-wl:,2] = (1-alpha)*plotimg[0:hl,wp-wl:,2] + alpha*legend_img[:,:,2]
         write_img(f"{args.output}8_pruned_by_features.{args.image_ext}",plotimg)
     #
     # Now we remove the ridges that do not satisfy the criteria
