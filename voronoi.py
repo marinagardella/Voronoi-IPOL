@@ -158,7 +158,7 @@ def get_connected_components(img,args,logger):
     # now we extract the connected components.
     #
     labels = skmorpth.label(img)
-    logger.info(f'Number of connected components found in the image: {np.max(labels)} ')
+    logger.info(f'Connected components: {np.max(labels)} ')
     if args.save_images == "all":
         write_img(f"{args.output}2_components.{args.image_ext}",np.max(labels)-labels)
     return labels
@@ -595,7 +595,8 @@ def area_voronoi_dla(fname,args):
         # the resulting points are inside the corresponding components.
         # 
         borders_img = get_borders(labels,args,logger)
-        logger.info(f' Total of {np.sum(borders_img)} border points.')
+        logger.info(f'Border points:')
+        logger.info(f'\tTotal: {np.sum(borders_img)}.')
         if args.save_images == "all":
             write_img(borders_img_fname,~borders_img)
         #
@@ -615,7 +616,7 @@ def area_voronoi_dla(fname,args):
         if args.save_images == "all":
             borders_img = plot_borders(input_img,border_points)
             write_img(sampled_img_fname,borders_img)
-        logger.info(f' sampled {np.sum(border_points_img)} border points.')
+        logger.info(f'\tSampled: {np.sum(border_points_img)}.')
         if np.sum(border_points_img) < 4:
             raise VoronoiError("Not enough points to construct diagram.")
         #
