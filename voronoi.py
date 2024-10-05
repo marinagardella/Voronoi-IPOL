@@ -381,10 +381,10 @@ def compute_thresholds(dE,args,logger):
     # WARNING: CHECK THE LOG!!! If d_1 and d_2 are too close, the algorithm will fail.
     #
     if len(peak_indexes) == 0:
-        logger.warning(f'\tNo peaks found in the histogram. Bailing out.')
-        raise VoronoiError('No peaks found in the histogram.')
+        logger.warning(f'\tNo peaks found in the histogram: bailing out')
+        raise VoronoiError('No peaks found in the histogram')
     elif len(peak_indexes) == 1:
-        logger.warning(f'\tOnly one peak found in the histogram!! Setting v1=v2.')
+        logger.warning(f'\tOnly one peak found in the histogram!! Setting v1=v2')
         v1 = peak_indexes[0]
         h1 = peak_heights[0]
         v2 = v1
@@ -581,7 +581,7 @@ def area_voronoi_dla(fname,args):
         labels = get_connected_components(binary_img,args,logger)
         NC = np.max(labels)
         if NC < 2:
-            raise VoronoiError('Less than two connected components in the image. Solution is trivial.')
+            raise VoronoiError('Less than two connected components in the image: solution is trivial')
         #
         #------------------------------------------------------------------------- 
         # 2. BORDERS EXTRACTION
@@ -596,7 +596,7 @@ def area_voronoi_dla(fname,args):
         # 
         borders_img = get_borders(labels,args,logger)
         logger.info(f'Border points:')
-        logger.info(f'\tTotal: {np.sum(borders_img)}.')
+        logger.info(f'\tTotal: {np.sum(borders_img)}')
         if args.save_images == "all":
             write_img(borders_img_fname,~borders_img)
         #
@@ -616,9 +616,9 @@ def area_voronoi_dla(fname,args):
         if args.save_images == "all":
             borders_img = plot_borders(input_img,border_points)
             write_img(sampled_img_fname,borders_img)
-        logger.info(f'\tSampled: {np.sum(border_points_img)}.')
+        logger.info(f'\tSampled: {np.sum(border_points_img)}')
         if np.sum(border_points_img) < 4:
-            raise VoronoiError("Not enough points to construct diagram.")
+            raise VoronoiError("Not enough points to construct diagram")
         #
         #------------------------------------------------------------------------- 
         # 4. POINT VORONOI DIAGRAM
@@ -630,7 +630,7 @@ def area_voronoi_dla(fname,args):
         pvd = get_point_voronoi(border_points,args,logger)
 
         if len(pvd.ridge_points) == 1:
-            raise VoronoiError("Only two connected components. Solution is the only ridge there is.")
+            raise VoronoiError("Only two connected components: solution is the only ridge there is")
         #
         # we extract the relevant data from the Voronoi object
         #
@@ -658,7 +658,7 @@ def area_voronoi_dla(fname,args):
         ridge_points = ridge_points[not_redundant]
         ridge_vertices = ridge_vertices[not_redundant]
         nridges = len(ridge_vertices)
-        logger.info(f'Remaining ridges after pruning redundant ones:{nridges}.')
+        logger.info(f'Remaining ridges after pruning redundant ones:{nridges}')
         np.savez(redundant_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
         if args.save_images == "all" or args.save_images == "important":
             redundant_img = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
@@ -688,7 +688,7 @@ def area_voronoi_dla(fname,args):
         #    
         t1,t2,ta  = compute_thresholds(dE,args,logger)
         if t1 < 0: # indicates an error in compute_threshold
-            raise VoronoiError("Error computing thresholds.")
+            raise VoronoiError("Error computing thresholds")
         #
         # Now the actual pruning takes place. 
         # A ridge E is removed if _either_ of the two following conditions hold:
@@ -710,9 +710,9 @@ def area_voronoi_dla(fname,args):
         prune     = np.logical_or(eq8,eq9)
         not_prune = np.logical_not(prune)
         logger.info(f'Pruning reason:')
-        logger.info(f'\tOnly by eq8:{np.sum(only_eq8)}.')
-        logger.info(f'\tOnly by eq9:{np.sum(only_eq9)}.')
-        logger.info(f'\tBoth       :{np.sum(eq8_and_9)}.')
+        logger.info(f'\tOnly by eq8:{np.sum(only_eq8)}')
+        logger.info(f'\tOnly by eq9:{np.sum(only_eq9)}')
+        logger.info(f'\tBoth       :{np.sum(eq8_and_9)}')
         np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
         #
         # Parenthesis: analysis of the conditions.
@@ -774,12 +774,12 @@ def area_voronoi_dla(fname,args):
         #
         ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
         nridges = len(ridge_vertices)
-        logger.info(f"Number of ridges in final diagram: {nridges}.")
+        logger.info(f"Number of ridges in final diagram: {nridges}")
         if args.save_images != "none":
             final_img = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
             write_img(final_img_fname,final_img)
         np.savez(final_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-        logger.info("Finished.")
+        logger.info("Finished")
         close_logger(logger)
         #
         #------------------------------------------------------------------------- 
