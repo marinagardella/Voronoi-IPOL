@@ -150,7 +150,7 @@ def get_connected_components(img,args,logger):
     # now we extract the connected components.
     #
     labels = skmorpth.label(img)
-    logger.info(f' found {np.max(labels)} connected components.')
+    logger.info(f'Number of connected components found in the image: {np.max(labels)} ')
     if args.save_images == "all":
         write_img(f"{args.output}2_components.{args.image_ext}",labels)
     return labels
@@ -390,7 +390,9 @@ def compute_thresholds(dE,args,logger):
         two_largest_peaks = peak_indexes[two_largest_peak_indexes]
         two_largest_heights = peak_heights[two_largest_peak_indexes]
         v2,v1 = max(two_largest_peaks),min(two_largest_peaks)
-        logger.info(f' largest peaks at v_1={v1} h_1={round(two_largest_heights[0])} and v_2={v2} h_2={round(two_largest_heights[1])}')
+        logger.info(f'Largest peaks:')
+        logger.info(f'\th_1={round(two_largest_heights[0])} at v_1={v1}') 
+        logger.info(f'\th_2={round(two_largest_heights[1])} at v_2={v2}') 
         if (np.abs(two_largest_peaks[1]-two_largest_peaks[0])) < 5:
             logger.warning(f'\tTwo largest peaks are way too close!!')
 
@@ -439,7 +441,7 @@ def compute_thresholds(dE,args,logger):
             h1 = h[v1]
             h2 = h0 + (v2-v0)*(h1-h0)
             ht2 = args.parameter_t * h2
-            logger.info(f"Target value t * h(v2) = {ht2:7.3f}")
+            # logger.info(f"Target value t * h(v2) = {ht2:7.3f}")
             t0 = v1-1
             while t0 < (maxd-1) and h[t0] > ht2:
                 t0 += 1
@@ -457,7 +459,7 @@ def compute_thresholds(dE,args,logger):
                 t2 = t0 + (ht2-h0)/(h1-h0)
     else:
         t2 = args.parameter_t2
-    logger.info(f' distance thresholds t1={t1} t2={t2}')
+    logger.info(f'Distance thresholds: t1={t1} and t2={t2}')
     #
     # a third area threshold is fixed to 40 in the paper.
     # this corresponds (according to [1]) to the largest area ratio between 
@@ -465,7 +467,7 @@ def compute_thresholds(dE,args,logger):
     # I guess this would be for example between 
     # a capital M or B or whichever has more 'ink' and a dot (.)
     #
-    logger.info(f' area threshold ta={args.parameter_ta}')
+    # logger.info(f'Area threshold: Ta={args.parameter_ta}')
     return t1,t2,args.parameter_ta
 
 
@@ -564,7 +566,7 @@ def area_voronoi_dla(fname,args):
     # the resulting points are inside the corresponding components.
     # 
     borders_img = get_borders(labels,args,logger)
-    logger.info(f' Total of {np.sum(borders_img)} border points.')
+    logger.info(f'Number of border points: {np.sum(borders_img)}.')
     if args.save_images == "all":
         write_img(f"{args.output}3_borders.{args.image_ext}",~borders_img)
     #
@@ -578,7 +580,7 @@ def area_voronoi_dla(fname,args):
     border_points_img = sample_border_points(borders_img,args,logger)
     if args.save_images == "all":
         write_img(f"{args.output}4_sampled_borders.{args.image_ext}",~border_points_img)
-    logger.info(f' sampled {np.sum(border_points_img)} border points.')
+    logger.info(f'Sampled border points: {np.sum(border_points_img)}.')
     #
     #------------------------------------------------------------------------- 
     # 4. POINT VORONOI DIAGRAM
@@ -610,7 +612,9 @@ def area_voronoi_dla(fname,args):
     vertices = pvd.vertices.astype(np.int32)
     nridges = len(ridge_points)
     nvertices = len(vertices)
-    logger.info(f' point voronoi has {nridges} ridges, {nvertices} vertices.')
+    logger.info(f'Point Voronoi diagram:')
+    logger.info(f'\tNumber of ridges: {nridges}.')
+    logger.info(f'\tNumber of vertices: {nvertices}.')
     np.savez(f"{args.output}5_point_voronoi.npz",points=points,vertices=vertices,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
 
     if args.save_images == "all":
@@ -625,7 +629,7 @@ def area_voronoi_dla(fname,args):
     ridge_points = ridge_points[not_redundant]
     ridge_vertices = ridge_vertices[not_redundant]
     nridges = len(ridge_vertices)
-    logger.info(f'Remaining ridges after pruning redundant ones:{nridges}.')
+    logger.info(f'Remaining ridges after pruning redundant ones: {nridges}.')
     np.savez(f"{args.output}6_pruned_redundant.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
     if args.save_images == "all" or args.save_images == "important":
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
@@ -679,9 +683,9 @@ def area_voronoi_dla(fname,args):
     prune     = np.logical_or(eq8,eq9)
     not_prune = np.logical_not(prune)
     logger.info(f'Pruning reason:')
-    logger.info(f'\tonly by eq8:{np.sum(only_eq8)}.')
-    logger.info(f'\tonly by eq9:{np.sum(only_eq9)}.')
-    logger.info(f'\tboth       :{np.sum(eq8_and_9)}.')
+    logger.info(f'\tOnly by eq8: {np.sum(only_eq8)}.')
+    logger.info(f'\tOnly by eq9: {np.sum(only_eq9)}.')
+    logger.info(f'\tBoth       : {np.sum(eq8_and_9)}.')
     np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
     #
     # Parenthesis: analysis of the conditions.
@@ -743,13 +747,13 @@ def area_voronoi_dla(fname,args):
     #
     ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
     nridges = len(ridge_vertices)
-    logger.info(f"number of ridges in final diagram: {nridges}.")
+    logger.info(f"Number of ridges in final diagram: {nridges}.")
     if args.save_images != "none":
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
         write_img(f"{args.output}9_final_area_voronoi.{args.image_ext}",plotimg)
         plt.close('all')
     np.savez(f"{args.output}9_final_area_voronoi.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-    logger.info("finished.")
+    #logger.info("finished.")
     close_logger(logger)
     #
     #------------------------------------------------------------------------- 
