@@ -566,7 +566,7 @@ def area_voronoi_dla(fname,args):
     # the resulting points are inside the corresponding components.
     # 
     borders_img = get_borders(labels,args,logger)
-    logger.info(f'Number of border points: {np.sum(borders_img)}.')
+    logger.info(f'Number of border points: {np.sum(borders_img)}')
     if args.save_images == "all":
         write_img(f"{args.output}3_borders.{args.image_ext}",~borders_img)
     #
@@ -580,7 +580,7 @@ def area_voronoi_dla(fname,args):
     border_points_img = sample_border_points(borders_img,args,logger)
     if args.save_images == "all":
         write_img(f"{args.output}4_sampled_borders.{args.image_ext}",~border_points_img)
-    logger.info(f'Sampled border points: {np.sum(border_points_img)}.')
+    logger.info(f'Sampled border points: {np.sum(border_points_img)}')
     #
     #------------------------------------------------------------------------- 
     # 4. POINT VORONOI DIAGRAM
@@ -613,8 +613,8 @@ def area_voronoi_dla(fname,args):
     nridges = len(ridge_points)
     nvertices = len(vertices)
     logger.info(f'Point Voronoi diagram:')
-    logger.info(f'\tNumber of ridges: {nridges}.')
-    logger.info(f'\tNumber of vertices: {nvertices}.')
+    logger.info(f'\tNumber of ridges:   {nridges}')
+    logger.info(f'\tNumber of vertices: {nvertices}')
     np.savez(f"{args.output}5_point_voronoi.npz",points=points,vertices=vertices,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
 
     if args.save_images == "all":
@@ -629,7 +629,7 @@ def area_voronoi_dla(fname,args):
     ridge_points = ridge_points[not_redundant]
     ridge_vertices = ridge_vertices[not_redundant]
     nridges = len(ridge_vertices)
-    logger.info(f'Remaining ridges after pruning redundant ones: {nridges}.')
+    logger.info(f'Remaining ridges after pruning redundant ones: {nridges}')
     np.savez(f"{args.output}6_pruned_redundant.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
     if args.save_images == "all" or args.save_images == "important":
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
@@ -683,9 +683,9 @@ def area_voronoi_dla(fname,args):
     prune     = np.logical_or(eq8,eq9)
     not_prune = np.logical_not(prune)
     logger.info(f'Pruning reason:')
-    logger.info(f'\tOnly by eq8: {np.sum(only_eq8)}.')
-    logger.info(f'\tOnly by eq9: {np.sum(only_eq9)}.')
-    logger.info(f'\tBoth       : {np.sum(eq8_and_9)}.')
+    logger.info(f'\tOnly by eq8: {np.sum(only_eq8)}')
+    logger.info(f'\tOnly by eq9: {np.sum(only_eq9)}')
+    logger.info(f'\tBoth       : {np.sum(eq8_and_9)}')
     np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
     #
     # Parenthesis: analysis of the conditions.
@@ -747,7 +747,7 @@ def area_voronoi_dla(fname,args):
     #
     ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
     nridges = len(ridge_vertices)
-    logger.info(f"Number of ridges in final diagram: {nridges}.")
+    logger.info(f"Number of ridges in final diagram: {nridges}")
     if args.save_images != "none":
         plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
         write_img(f"{args.output}9_final_area_voronoi.{args.image_ext}",plotimg)
