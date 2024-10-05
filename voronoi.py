@@ -536,8 +536,8 @@ def area_voronoi_dla(fname,args):
     sampled_img_fname    = f"{args.output}4_sampled_borders.{args.image_ext}"
     voronoi_img_fname    = f"{args.output}5_point_voronoi.{args.image_ext}"
     redundant_img_fname  = f"{args.output}6_pruned_redundant.{args.image_ext}"
-    criteria_img_fname   = f"{args.output}6_pruned_by_features.{args.image_ext}"
-    final_img_fname      = f"{args.output}8_final_area_voronoi.{args.image_ext}"
+    criteria_img_fname   = f"{args.output}8_pruned_by_features.{args.image_ext}"
+    final_img_fname      = f"{args.output}9_final_area_voronoi.{args.image_ext}"
 
     voronoi_data_fname   = f"{args.output}5_point_voronoi.npz" 
     redundant_data_fname = f"{args.output}6_pruned_redundant.npz" 
