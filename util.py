@@ -73,9 +73,26 @@ fp.set_weight('bold')
 fp.set_size(9)
 
 
-POINT_COLOR  = (128,128,255)
+POINT_COLOR  = (255,64,0,128)
 VERTEX_COLOR = (255,128,128)
 RIDGE_COLOR  = (64,0,192)
+
+def plot_borders(background,borders):
+    """
+    Plot the borders over the input image with colors, labels, and all sorts of
+    fancy stuff.
+    """
+    if background.dtype != np.uint8:
+        background = (255*background).astype(np.uint8)
+    im = Image.fromarray(background)
+    im = im.convert('RGB')
+    draw = ImageDraw.Draw(im)
+    for p in borders:
+        p_y,p_x = p
+        draw.ellipse((p_x-1,p_y-1,p_x+1,p_y+1),fill=POINT_COLOR)
+    return np.array(im)
+
+
 
 def plot_voronoi(background,
                  points,
@@ -84,10 +101,7 @@ def plot_voronoi(background,
                  ridge_vertices,
                  ridge_color=None,
                  draw_points=False,
-                 point_color=None,
-                 point_labels=False,
-                 vertex_labels=False,
-                 ridge_labels=False):
+                 point_color=None):
     """
     Plot the Voronoi diagram over the input image with colors, labels, and all sorts of
     fancy stuff.
@@ -116,69 +130,3 @@ def plot_voronoi(background,
             p_y,p_x = points[p[1]]
             draw.ellipse((p_x-1,p_y-1,p_x+1,p_y+1),fill=POINT_COLOR)
     return np.array(imvor)
-
-
-def plot_voronoi_pyplot(img,borders,points,vertices,ridge_vertices,ridge_points=None,deluxe=False,ridge_color=None):
-    """
-    Plot the Voronoi diagram over the input image with colors, labels, and all sorts of
-    fancy stuff.
-    """
-    aspect_ratio = img.shape[1]/img.shape[0]
-    fig = plt.figure(figsize=(10*aspect_ratio,10),dpi=600)
-    ax = fig.add_subplot()
-    ax.set_axis_off()
-    ax.margins(0)
-    ax.set_facecolor((0.0,0.0,0.0))
-    ax.patch.set_facecolor((0.0,0.0,0.0))
-
-    ax.imshow((3.0/10.0)*img+(3.0/10.0)*borders,cmap='gray',vmax=1.0,vmin=0.0)
-    H,W = img.shape
-    
-    for i,p in enumerate(points):
-        p_y,p_x = p
-        ax.add_artist(mpatches.Circle((p_x,p_y),1,color=(0.5,0.5,1.0),alpha=1))
-        if deluxe:
-            ax.text(p_x,p_y,f'$p_{{{i+1:2}}}$',fontproperties=fp,parse_math=True,color=POINT_COLOR,alpha=0.5)
-
-    if ridge_points is not None:
-        for i,rp in enumerate(ridge_points):
-            p_y,p_x = points[rp]
-            ax.add_artist(mpatches.Circle((p_x,p_y),1,color=POINT_COLOR))
-            if deluxe:
-                ax.text(p_x,p_y,f'$p_{{{i+1:2}}}$',fontproperties=fp,parse_math=True,color=POINT_COLOR,alpha=0.5)
-
-    for i,rvi in enumerate(ridge_vertices):
-        vi_1, vi_2 = rvi
-        if vi_1 >= 0:
-            p_y,p_x = vertices[vi_1]
-            ax.add_artist(mpatches.Circle((p_x,p_y),1,color=VERTEX_COLOR,alpha=0.5))
-            if deluxe:
-                ax.text(p_x,p_y,f'$v_{{{i+1:2}}}$',fontproperties=fp,parse_math=True,color=VERTEX_COLOR,alpha=0.5)
-        if vi_2 >= 0:
-            p_y,p_x = vertices[vi_2]
-            ax.add_artist(mpatches.Circle((p_x,p_y),1,color=VERTEX_COLOR,alpha=0.5))
-            if deluxe:
-                ax.text(p_x,p_y,f'$v_{{{i+1:2}}}$',fontproperties=fp,parse_math=True,color=VERTEX_COLOR,alpha=0.5)
-
-    if ridge_color is None:
-        ridge_color = [RIDGE_COLOR]*len(ridge_vertices)
-    elif len(ridge_color) < len(ridge_vertices):
-        assert(len(ridge_color) <= 4)
-        ridge_color = [ridge_color]*len(ridge_vertices)
-    else:
-        assert(len(ridge_color) == len(ridge_vertices))
-    for i,rv in enumerate(ridge_vertices):
-        if rv[0] < 0 or rv[1] < 0:
-            continue
-        a_i = rv[0]
-        b_i = rv[1]
-        a_y,a_x = vertices[a_i]
-        b_y,b_x = vertices[b_i]
-        e_x = (a_x+b_x)/2
-        e_y = (a_y+b_y)/2
-        ax.plot((a_x,b_x),(a_y,b_y),lw=1,color=ridge_color[i],alpha=0.5)
-        if deluxe:
-            ax.text(e_x,e_y,f'$e_{{{i+1:2}}}$',fontproperties=fp,parse_math=True,color=ridge_color[i],alpha=0.5)
-    ax.set_xlim(0,W)
-    ax.set_ylim(H,0)
-    return fig

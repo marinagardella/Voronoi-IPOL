@@ -63,6 +63,14 @@ DPI = 150
 # FUNCTIONS
 #==============================================================================
 #
+class VoronoiError(Exception):
+    """
+    " Exception class for Voronoi errors
+    """
+    def __init__(self,msg):
+        super().__init__(msg)
+
+
 def get_logger(fname):
     """
     Create a logger object
@@ -152,7 +160,7 @@ def get_connected_components(img,args,logger):
     labels = skmorpth.label(img)
     logger.info(f' found {np.max(labels)} connected components.')
     if args.save_images == "all":
-        write_img(f"{args.output}2_components.{args.image_ext}",labels)
+        write_img(f"{args.output}2_components.{args.image_ext}",np.max(labels)-labels)
     return labels
 
 
@@ -210,7 +218,7 @@ def sample_border_points(borders,args,logger):
         return borders
 
 
-def get_point_voronoi(borders,args,logger):
+def get_point_voronoi(border_points,args,logger):
     """  
     Compute the Voronoi diagram of the border points.
     This is done using Scipy's implementation, which returns a Voronoi object.
@@ -243,11 +251,10 @@ def get_point_voronoi(borders,args,logger):
        Voronoi diagram that each _input point_ belongs to. If the point is at the edge of the image, the value will be -1.
         We DON'T care about this list. It's of no use to the algorithm.
     """
-    borders_x, borders_y = np.where(borders)
-    if not len(borders_x):
-        return None
-    border_points = np.array(list(zip(borders_x,borders_y)))
-    return  spatial.Voronoi(border_points)
+    try:
+        return  spatial.Voronoi(border_points)
+    except spatial.qhull.QhullError as e:
+        raise VoronoiError(f'Error computing Voronoi diagram: {str(e)}')
 
 
 def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
@@ -339,7 +346,6 @@ def compute_thresholds(dE,args,logger):
         plt.grid(True)
         plt.xlabel('distance (px)')
         plt.ylabel('frequency')
-        plt.legend()
         plt.savefig(f"{args.output}7a_distance_histogram.{args.image_ext}",bbox_inches="tight",dpi=DPI)
         plt.close('all')
     #
@@ -376,7 +382,7 @@ def compute_thresholds(dE,args,logger):
     #
     if len(peak_indexes) == 0:
         logger.warning(f'\tNo peaks found in the histogram. Bailing out.')
-        return -1,-1,-1
+        raise VoronoiError('No peaks found in the histogram.')
     elif len(peak_indexes) == 1:
         logger.warning(f'\tOnly one peak found in the histogram!! Setting v1=v2.')
         v1 = peak_indexes[0]
@@ -508,6 +514,8 @@ def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
     return np.array(ridge_vertices),np.array(ridge_points)
 
 
+
+
 def area_voronoi_dla(fname,args):
     """
     " Main algorithm defined in paper [1]
@@ -517,245 +525,269 @@ def area_voronoi_dla(fname,args):
     # 0. PREPARATION
     #------------------------------------------------------------------------- 
     #
+    #
+    # file names for different output stages
+    # 
+    input_img_fname      = f"{args.output}0_input.{args.image_ext}"
+    binarized_img_fname  = f"{args.output}1_binarized.{args.image_ext}"
+    borders_img_fname    = f"{args.output}3_borders.{args.image_ext}"
+    sampled_img_fname    = f"{args.output}4_sampled_borders.{args.image_ext}"
+    voronoi_img_fname    = f"{args.output}5_point_voronoi.{args.image_ext}"
+    redundant_img_fname  = f"{args.output}6_pruned_redundant.{args.image_ext}"
+    criteria_img_fname   = f"{args.output}6_pruned_by_features.{args.image_ext}"
+    final_img_fname      = f"{args.output}8_final_area_voronoi.{args.image_ext}"
+
+    voronoi_data_fname   = f"{args.output}5_point_voronoi.npz" 
+    redundant_data_fname = f"{args.output}6_pruned_redundant.npz" 
+    criteria_data_fname  = f"{args.output}8_pruned_by_features.npz"
+    final_data_fname     = f"{args.output}9_final_area_voronoi.npz"
+
     logger = get_logger(args.log_file)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-
-    final_output = f"{args.output}9_final_area_voronoi.npz"
-    if os.path.exists(final_output) and not args.recompute:
+    if os.path.exists(final_data_fname) and not args.recompute:
         logger.info(' ALREADY COMPUTED. Use --recompute to force.')
         close_logger(logger)
         return
-    
-    input_img = read_img(fname)
-    if args.save_images == "all":
-        plt.imsave(f"{args.output}0_input.png",input_img)
-    binary_img = get_binary_image(input_img,args,logger)
-    #
-    #------------------------------------------------------------------------- 
-    # 1. BINARIZATION
-    #------------------------------------------------------------------------- 
-    #
-    # The original paper [1] assumes a binary input. No mention is made of the 
-    # binarization process despite the description in the experiments section 
-    # (Section 5, page 6) indicates that the authors produced their own dataset 
-    # via scanning. 
-    #
-    if args.save_images == "all" or args.save_images == "important":
-        write_img(f"{args.output}1_binarized.{args.image_ext}",~binary_img)
 
-    labels = get_connected_components(binary_img,args,logger)
-    NC = np.max(labels)
-    if NC < 2:
-        logger.warning(f'Less than two connected components in the image. Solutioh is trivial.')
-        np.savez(final_output,ridge_points=[],ridge_vertices=[])
-        close_logger(logger)
-        return
-    #
-    #------------------------------------------------------------------------- 
-    # 2. BORDERS EXTRACTION
-    #------------------------------------------------------------------------- 
-    #
-    # In order to compute the (approximate) area Voronoi diagram, the authors
-    # sample the borders of the connected components and construct the ordinary 
-    # point Voronoi diagram from there. 
-    #
-    # The borders are obtained by eroding the connected components, so that
-    # the resulting points are inside the corresponding components.
-    # 
-    borders_img = get_borders(labels,args,logger)
-    logger.info(f' Total of {np.sum(borders_img)} border points.')
-    if args.save_images == "all":
-        write_img(f"{args.output}3_borders.{args.image_ext}",~borders_img)
-    #
-    #------------------------------------------------------------------------- 
-    # 3. BORDERS SUBSAMPLING
-    #------------------------------------------------------------------------- 
-    #
-    # The paper does not specify how to subsample the borders. 
-    # By default we do so randomly with a probability of 0.1 
-    #
-    border_points_img = sample_border_points(borders_img,args,logger)
-    if args.save_images == "all":
-        write_img(f"{args.output}4_sampled_borders.{args.image_ext}",~border_points_img)
-    logger.info(f' sampled {np.sum(border_points_img)} border points.')
-    #
-    #------------------------------------------------------------------------- 
-    # 4. POINT VORONOI DIAGRAM
-    #------------------------------------------------------------------------- 
-    #
-    # Now we compute the Voronoi diagram of the border points.
-    #
-    if np.sum(border_points_img) < 4:
-        logger.warning("Not enough points to construct diagram.")
-        return
+    try:    
+        ridge_points = []
+        ridge_vertices = []
 
-    pvd = get_point_voronoi(border_points_img,args,logger)
-    if pvd is None:
-        logger.warning("No borders detected!! Nothing to be done.")
-        close_logger(logger)
-        return
+        input_img           = read_img(fname)
+        voronoi_img         = input_img
+        redundant_img       = input_img
+        criteria_img        = input_img
+        final_img           = input_img
 
-    if len(pvd.ridge_points) == 1:
-        logger.warning("Only two connected components. Solution is the only ridge there is.")
-        np.savez(final_output,ridge_points=[],ridge_vertices=[])
-        close_logger(logger)
-        return
-    #
-    # we extract the relevant data from the Voronoi object
-    #
-    ridge_points = np.array(pvd.ridge_points).astype(np.int32)
-    points = pvd.points.astype(np.int32)
-    ridge_vertices = np.array(pvd.ridge_vertices).astype(np.int32)
-    vertices = pvd.vertices.astype(np.int32)
-    nridges = len(ridge_points)
-    nvertices = len(vertices)
-    logger.info(f' point voronoi has {nridges} ridges, {nvertices} vertices.')
-    np.savez(f"{args.output}5_point_voronoi.npz",points=points,vertices=vertices,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
+        if args.save_images == "all":
+            plt.imsave(input_img_fname,input_img)
+        #
+        #------------------------------------------------------------------------- 
+        # 1. BINARIZATION
+        #------------------------------------------------------------------------- 
+        #
+        # The original paper [1] assumes a binary input. No mention is made of the 
+        # binarization process despite the description in the experiments section 
+        # (Section 5, page 6) indicates that the authors produced their own dataset 
+        # via scanning. 
+        #
+        binary_img = get_binary_image(input_img,args,logger)
+        if args.save_images == "all" or args.save_images == "important":
+            write_img(binarized_img_fname,~binary_img)
 
-    if args.save_images == "all":
-        plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
-        write_img(f"{args.output}5_point_voronoi.{args.image_ext}",plotimg)
-    #
-    #------------------------------------------------------------------------- 
-    # 4. APPROXIMATE AREA VORONOI DIAGRAM
-    #------------------------------------------------------------------------- 
-    #
-    not_redundant = eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices)
-    ridge_points = ridge_points[not_redundant]
-    ridge_vertices = ridge_vertices[not_redundant]
-    nridges = len(ridge_vertices)
-    logger.info(f'Remaining ridges after pruning redundant ones:{nridges}.')
-    np.savez(f"{args.output}6_pruned_redundant.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-    if args.save_images == "all" or args.save_images == "important":
-        plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
-        write_img(f"{args.output}6_pruned_redundant.{args.image_ext}",plotimg)
-    #
-    #------------------------------------------------------------------------- 
-    # 5. PRUNING BY FEATURES
-    #------------------------------------------------------------------------- 
-    #
-    # Now ridges of the Area Voronoi Diagram that separate what is assumed to 
-    # be parts of the same text area are removed. This is done using a set of
-    # features. These are:
-    #
-    # a) d(E), the distances of all ridges (E) to their closest connected 
-    #    component,
-    # b) ar(E) the area ratio a_r(E) between the components divided by ridge E
-    #
-    dE,arE = compute_ridge_features(points,labels,ridge_points,logger)
-    np.savez(f"{args.output}7_ridge_features.npz",dE=dE,arE=arE)
-    #
-    # The criteria used to remove ridges using the features depend on three
-    # thresholds. 
-    # T_{d_1} and T_{d_2} are derived from a smoothed version of the 
-    # histogram of d(E).
-    # A Third threshold, T_a, is a parameter of the algorithm which is fixed to
-    # 40 for reasons detailed in the paper.
-    #    
-    t1,t2,ta  = compute_thresholds(dE,args,logger)
-    if t1 < 0: # indicates an error in compute_threshold
-        logger.warning("Error computing thresholds!")
+        labels = get_connected_components(binary_img,args,logger)
+        NC = np.max(labels)
+        if NC < 2:
+            raise VoronoiError('Less than two connected components in the image. Solution is trivial.')
+        #
+        #------------------------------------------------------------------------- 
+        # 2. BORDERS EXTRACTION
+        #------------------------------------------------------------------------- 
+        #
+        # In order to compute the (approximate) area Voronoi diagram, the authors
+        # sample the borders of the connected components and construct the ordinary 
+        # point Voronoi diagram from there. 
+        #
+        # The borders are obtained by eroding the connected components, so that
+        # the resulting points are inside the corresponding components.
+        # 
+        borders_img = get_borders(labels,args,logger)
+        logger.info(f' Total of {np.sum(borders_img)} border points.')
+        if args.save_images == "all":
+            write_img(borders_img_fname,~borders_img)
+        #
+        #------------------------------------------------------------------------- 
+        # 3. BORDERS SUBSAMPLING
+        #------------------------------------------------------------------------- 
+        #
+        # The paper does not specify how to subsample the borders. 
+        # By default we do so randomly with a probability of 0.1 
+        #
+        border_points_img = sample_border_points(borders_img,args,logger)
+        borders_x, borders_y = np.where(border_points_img)
+        if len(borders_x) < 4:
+            raise VoronoiError('No border points to work with')
+
+        border_points = np.array(list(zip(borders_x,borders_y)))
+        if args.save_images == "all":
+            borders_img = plot_borders(input_img,border_points)
+            write_img(sampled_img_fname,borders_img)
+        logger.info(f' sampled {np.sum(border_points_img)} border points.')
+        if np.sum(border_points_img) < 4:
+            raise VoronoiError("Not enough points to construct diagram.")
+        #
+        #------------------------------------------------------------------------- 
+        # 4. POINT VORONOI DIAGRAM
+        #------------------------------------------------------------------------- 
+        #
+        # Now we compute the Voronoi diagram of the border points.
+        #
+
+        pvd = get_point_voronoi(border_points,args,logger)
+
+        if len(pvd.ridge_points) == 1:
+            raise VoronoiError("Only two connected components. Solution is the only ridge there is.")
+        #
+        # we extract the relevant data from the Voronoi object
+        #
+        ridge_points = np.array(pvd.ridge_points).astype(np.int32)
+        points = pvd.points.astype(np.int32)
+        ridge_vertices = np.array(pvd.ridge_vertices).astype(np.int32)
+        vertices = pvd.vertices.astype(np.int32)
+        nridges = len(ridge_points)
+        nvertices = len(vertices)
+        logger.info(f' point voronoi has {nridges} ridges, {nvertices} vertices.')
+        np.savez(voronoi_data_fname,
+            points=points,vertices=vertices,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
+
+        if args.save_images == "all":
+            voronoi_img = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
+            write_img(voronoi_img_fname,voronoi_img)
+        #
+        #------------------------------------------------------------------------- 
+        # 4. APPROXIMATE AREA VORONOI DIAGRAM
+        #------------------------------------------------------------------------- 
+        #
+        not_redundant = eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices)
+        ridge_points = ridge_points[not_redundant]
+        ridge_vertices = ridge_vertices[not_redundant]
+        nridges = len(ridge_vertices)
+        logger.info(f'Remaining ridges after pruning redundant ones:{nridges}.')
+        np.savez(redundant_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
+        if args.save_images == "all" or args.save_images == "important":
+            redundant_img = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
+            write_img(redundant_img_fname,redundant_img)
+        #
+        #------------------------------------------------------------------------- 
+        # 5. PRUNING BY FEATURES
+        #------------------------------------------------------------------------- 
+        #
+        # Now ridges of the Area Voronoi Diagram that separate what is assumed to 
+        # be parts of the same text area are removed. This is done using a set of
+        # features. These are:
+        #
+        # a) d(E), the distances of all ridges (E) to their closest connected 
+        #    component,
+        # b) ar(E) the area ratio a_r(E) between the components divided by ridge E
+        #
+        dE,arE = compute_ridge_features(points,labels,ridge_points,logger)
+        #np.savez(f"{args.output}7_ridge_features.npz",dE=dE,arE=arE)
+        #
+        # The criteria used to remove ridges using the features depend on three
+        # thresholds. 
+        # T_{d_1} and T_{d_2} are derived from a smoothed version of the 
+        # histogram of d(E).
+        # A Third threshold, T_a, is a parameter of the algorithm which is fixed to
+        # 40 for reasons detailed in the paper.
+        #    
+        t1,t2,ta  = compute_thresholds(dE,args,logger)
+        if t1 < 0: # indicates an error in compute_threshold
+            raise VoronoiError("Error computing thresholds.")
+        #
+        # Now the actual pruning takes place. 
+        # A ridge E is removed if _either_ of the two following conditions hold:
+        #
+        # i) d(E)/T_{d_1} < 1                   (8)
+        # ii) d(E)/T_{d_2} + a_r(E)/T_{a}  < 1  (9)
+        #
+        # Section 4.3 is ambiguous here, because it says that the ridges pruned
+        # are those satisfying eqs. (8) AND (9), but the text right after (8)
+        # and (9) indicates that an edge is pruned if EITHER (8) OR (9) is met.
+        # As the text is more precise when such criteria were introduced, we 
+        # assume that this is an OR, not an AND.
+        #
+        ta = args.parameter_ta
+        eq8, eq9 = eval_pruning_criteria(dE,arE,t1,t2,ta)
+        only_eq8 = np.sum(np.logical_and(eq8,np.logical_not(eq9)))
+        only_eq9 = np.sum(np.logical_and(eq9,np.logical_not(eq8)))
+        eq8_and_9 = np.sum(np.logical_and(eq9,eq8))
+        prune     = np.logical_or(eq8,eq9)
+        not_prune = np.logical_not(prune)
+        logger.info(f'Pruning reason:')
+        logger.info(f'\tonly by eq8:{np.sum(only_eq8)}.')
+        logger.info(f'\tonly by eq9:{np.sum(only_eq9)}.')
+        logger.info(f'\tboth       :{np.sum(eq8_and_9)}.')
+        np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
+        #
+        # Parenthesis: analysis of the conditions.
+        #
+        # Here we optionally produce a map where the different pruned ridges are
+        # are painted with colors which depend on the conditions used for
+        # pruning them. The surviving ridges are also shown.
+        #
+        # only satisfying eq8 gives color (1,1,0) -> yellow 
+        # only satisfying eq9 gives color (1,0,1) -> magenta
+        # satisfying bot eq88 and eq9 gives color (1,0,0) -> red
+        # 
+        
+        if args.save_images == "all" or args.save_images == "important":
+            ridge_colors = np.outer(np.ones(len(ridge_vertices)),np.array(RIDGE_COLOR)).astype(np.uint8)
+            for j in range(len(ridge_vertices)):
+                if eq8[j] and eq9[j]: # very pruned
+                    ridge_colors[j,:] = [255,192,64]
+                elif eq8[j]:          # strangely pruned
+                    ridge_colors[j,:] = [255,0,0]
+                elif eq9[j]:          # reasonably pruned
+                    ridge_colors[j,:] = [0,192,32]
+            ridge_colors = list(tuple(r) for r in ridge_colors)
+            plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
+            cwd = os.path.dirname(__file__)
+            legend_img = read_img(os.path.join(cwd,'fig/legend_medium_alpha75.png'))
+            alpha = legend_img[:,:,3]
+            alpha = alpha/(max(1e-4,np.max(alpha)))
+            legend_img = legend_img[:,:,:3]
+            hl,wl,_ = legend_img.shape
+            hp,wp,_ = plotimg.shape
+            plotimg[0:hl,wp-wl:,0] = (1-alpha)*plotimg[0:hl,wp-wl:,0] + alpha*legend_img[:,:,0]
+            plotimg[0:hl,wp-wl:,1] = (1-alpha)*plotimg[0:hl,wp-wl:,1] + alpha*legend_img[:,:,1]
+            plotimg[0:hl,wp-wl:,2] = (1-alpha)*plotimg[0:hl,wp-wl:,2] + alpha*legend_img[:,:,2]
+            criteria_img = plotimg
+            write_img(criteria_img_fname,criteria_img)
+        #
+        # Now we remove the ridges that do not satisfy the criteria
+        #
+        ridge_points= ridge_points[not_prune]
+        ridge_vertices = ridge_vertices[not_prune]
+        nridges = len(ridge_vertices)
+        logger.info(f"Remaining ridges after pruning by criterias (8) and (9): {nridges}")
+        np.savez(criteria_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
+        #
+        #------------------------------------------------------------------------- 
+        # 6. LOOP CONDITION
+        #------------------------------------------------------------------------- 
+        #
+        # the final step is to prune the ridges that do not belong to frontiers
+        # between text areas.  These are identified by the authors as those
+        # that satisfy one of two conditions: either they reach the border of the image
+        # or share a vertex with another frontier, which may subdivide the image in 
+        # other directions.
+        #
+        # The above condition needs to be checked repeatedly, and thus the authors
+        # refer to it as a "loop condition". The name is not very descriptive, as it
+        # the actual "loop condition" is met while there are ridges to prune.
+        #
+        ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
+        nridges = len(ridge_vertices)
+        logger.info(f"number of ridges in final diagram: {nridges}.")
+        if args.save_images != "none":
+            final_img = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
+            write_img(final_img_fname,final_img)
+        np.savez(final_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
+        logger.info("finished.")
         close_logger(logger)
-        return
-    #
-    # Now the actual pruning takes place. 
-    # A ridge E is removed if _either_ of the two following conditions hold:
-    #
-    # i) d(E)/T_{d_1} < 1                   (8)
-    # ii) d(E)/T_{d_2} + a_r(E)/T_{a}  < 1  (9)
-    #
-    # Section 4.3 is ambiguous here, because it says that the ridges pruned
-    # are those satisfying eqs. (8) AND (9), but the text right after (8)
-    # and (9) indicates that an edge is pruned if EITHER (8) OR (9) is met.
-    # As the text is more precise when such criteria were introduced, we 
-    # assume that this is an OR, not an AND.
-    #
-    ta = args.parameter_ta
-    eq8, eq9 = eval_pruning_criteria(dE,arE,t1,t2,ta)
-    only_eq8 = np.sum(np.logical_and(eq8,np.logical_not(eq9)))
-    only_eq9 = np.sum(np.logical_and(eq9,np.logical_not(eq8)))
-    eq8_and_9 = np.sum(np.logical_and(eq9,eq8))
-    prune     = np.logical_or(eq8,eq9)
-    not_prune = np.logical_not(prune)
-    logger.info(f'Pruning reason:')
-    logger.info(f'\tonly by eq8:{np.sum(only_eq8)}.')
-    logger.info(f'\tonly by eq9:{np.sum(only_eq9)}.')
-    logger.info(f'\tboth       :{np.sum(eq8_and_9)}.')
-    np.savez(f"{args.output}7b_ridge_criteria.npz",eq8=eq8,eq9=eq9)
-    #
-    # Parenthesis: analysis of the conditions.
-    #
-    # Here we optionally produce a map where the different pruned ridges are
-    # are painted with colors which depend on the conditions used for
-    # pruning them. The surviving ridges are also shown.
-    #
-    # only satisfying eq8 gives color (1,1,0) -> yellow 
-    # only satisfying eq9 gives color (1,0,1) -> magenta
-    # satisfying bot eq88 and eq9 gives color (1,0,0) -> red
-    # 
-    
-    if args.save_images == "all" or args.save_images == "important":
-        ridge_colors = np.outer(np.ones(len(ridge_vertices)),np.array(RIDGE_COLOR)).astype(np.uint8)
-        for j in range(len(ridge_vertices)):
-            if eq8[j] and eq9[j]: # very pruned
-                ridge_colors[j,:] = [255,192,64]
-            elif eq8[j]:          # strangely pruned
-                ridge_colors[j,:] = [255,0,0]
-            elif eq9[j]:          # reasonably pruned
-                ridge_colors[j,:] = [0,192,32]
-        ridge_colors = list(tuple(r) for r in ridge_colors)
-        plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices,ridge_color=ridge_colors)
-        cwd = os.path.dirname(__file__)
-        legend_img = read_img(os.path.join(cwd,'fig/legend_medium_alpha75.png'))
-        alpha = legend_img[:,:,3]
-        alpha = alpha/(max(1e-4,np.max(alpha)))
-        legend_img = legend_img[:,:,:3]
-        hl,wl,_ = legend_img.shape
-        hp,wp,_ = plotimg.shape
-        #plotimg[0:hl,wp-wl:,:] = legend_img[:,:,0]
-        plotimg[0:hl,wp-wl:,0] = (1-alpha)*plotimg[0:hl,wp-wl:,0] + alpha*legend_img[:,:,0]
-        plotimg[0:hl,wp-wl:,1] = (1-alpha)*plotimg[0:hl,wp-wl:,1] + alpha*legend_img[:,:,1]
-        plotimg[0:hl,wp-wl:,2] = (1-alpha)*plotimg[0:hl,wp-wl:,2] + alpha*legend_img[:,:,2]
-        write_img(f"{args.output}8_pruned_by_features.{args.image_ext}",plotimg)
-    #
-    # Now we remove the ridges that do not satisfy the criteria
-    #
-    ridge_points= ridge_points[not_prune]
-    ridge_vertices = ridge_vertices[not_prune]
-    nridges = len(ridge_vertices)
-    logger.info(f"Remaining ridges after pruning by criterias (8) and (9): {nridges}")
-    np.savez(f"{args.output}8_pruned_by_features.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-    #
-    #------------------------------------------------------------------------- 
-    # 6. LOOP CONDITION
-    #------------------------------------------------------------------------- 
-    #
-    # the final step is to prune the ridges that do not belong to frontiers
-    # between text areas.  These are identified by the authors as those
-    # that satisfy one of two conditions: either they reach the border of the image
-    # or share a vertex with another frontier, which may subdivide the image in 
-    # other directions.
-    #
-    # The above condition needs to be checked repeatedly, and thus the authors
-    # refer to it as a "loop condition". The name is not very descriptive, as it
-    # the actual "loop condition" is met while there are ridges to prune.
-    #
-    ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
-    nridges = len(ridge_vertices)
-    logger.info(f"number of ridges in final diagram: {nridges}.")
-    if args.save_images != "none":
-        plotimg = plot_voronoi(input_img, points, vertices, ridge_points, ridge_vertices)
-        write_img(f"{args.output}9_final_area_voronoi.{args.image_ext}",plotimg)
-        plt.close('all')
-    np.savez(f"{args.output}9_final_area_voronoi.npz",ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
-    logger.info("finished.")
-    close_logger(logger)
-    #
-    #------------------------------------------------------------------------- 
-    # -- END ---
-    #------------------------------------------------------------------------- 
-    #
+        #
+        #------------------------------------------------------------------------- 
+        # -- END ---
+        #------------------------------------------------------------------------- 
+        #
+    except VoronoiError as e:
+        write_img(redundant_img_fname,redundant_img)
+        write_img(criteria_img_fname,criteria_img)
+        write_img(final_img_fname,input_img)
+        logger.error(f'{str(e)}')
+    finally:
+        close_logger(logger)
 
 
 def area_voronoi_dla_mp(rel_fname,args):
