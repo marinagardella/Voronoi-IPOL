@@ -152,6 +152,8 @@ def get_connected_components(img,args,logger):
     #
     if args.remove_blobs:
         den_img = skmorpth.remove_small_objects(img, min_size=args.remove_blobs)
+    else:
+        den_img = img
     #
     # now we extract the connected components.
     #
