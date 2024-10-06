@@ -151,17 +151,13 @@ def get_connected_components(img,args,logger):
     # OPTIONAL STEP: remove small blobs
     #
     if args.remove_blobs:
-        img = skmorpth.remove_small_objects(img, min_size=args.remove_blobs)
-        if args.save_images == "all":
-            write_img(f"{args.output}1b_removed_small_objects.{args.image_ext}",~img)
+        den_img = skmorpth.remove_small_objects(img, min_size=args.remove_blobs)
     #
     # now we extract the connected components.
     #
-    labels = skmorpth.label(img)
+    labels = skmorpth.label(den_img)
     logger.info(f'Connected components: {np.max(labels)} ')
-    if args.save_images == "all":
-        write_img(f"{args.output}2_components.{args.image_ext}",np.max(labels)-labels)
-    return labels
+    return den_img,labels
 
 
 def get_borders(labels,args,logger):
@@ -532,6 +528,8 @@ def area_voronoi_dla(fname,args):
     # 
     input_img_fname      = f"{args.output}0_input.{args.image_ext}"
     binarized_img_fname  = f"{args.output}1_binarized.{args.image_ext}"
+    denoised_img_fname   = f"{args.output}1b_removed_small_objects.{args.image_ext}"
+    components_img_fname = f"{args.output}2_components.{args.image_ext}"
     borders_img_fname    = f"{args.output}3_borders.{args.image_ext}"
     sampled_img_fname    = f"{args.output}4_sampled_borders.{args.image_ext}"
     voronoi_img_fname    = f"{args.output}5_point_voronoi.{args.image_ext}"
@@ -578,7 +576,11 @@ def area_voronoi_dla(fname,args):
         if args.save_images == "all" or args.save_images == "important":
             write_img(binarized_img_fname,~binary_img)
 
-        labels = get_connected_components(binary_img,args,logger)
+        denoised_img,labels = get_connected_components(binary_img,args,logger)
+        if args.save_images == "all":
+            write_img(components_img_fname,np.max(labels)-labels)
+            write_img(denoised_img_fname,~denoised_img)
+
         NC = np.max(labels)
         if NC < 2:
             raise VoronoiError('Less than two connected components in the image: solution is trivial')
