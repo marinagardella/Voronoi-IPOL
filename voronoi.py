@@ -384,7 +384,7 @@ def compute_thresholds(dE,args,logger):
     elif len(peak_indexes) == 1:
         logger.warning(f'\tOnly one peak found in the histogram!! Setting v1=v2')
         v1 = peak_indexes[0]
-        h1 = peak_heights[0]
+        h1 = dist_hist_smoothed[v1]
         v2 = v1
         two_largest_peaks = [v1,v1]
         two_largest_heights = [h1,h1]
