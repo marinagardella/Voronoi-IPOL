@@ -478,8 +478,8 @@ def compute_thresholds(dE,args,logger):
 def eval_pruning_criteria(dE, arE, t1, t2, ta):
     assert(len(dE) == len(arE))
     N = len(dE)
-    satisfies_eq8 = [d< t1 for d in dE]
-    satisfies_eq9 = [d/t2 + a/ta < 1 for d,a in zip(dE,arE)]
+    satisfies_eq8 = [d<= t1 for d in dE]
+    satisfies_eq9 = [d/t2 + a/ta <= 1 for d,a in zip(dE,arE)]
     return satisfies_eq8, satisfies_eq9
 
 
