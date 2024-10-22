@@ -712,7 +712,7 @@ def area_voronoi_dla(fname,args):
         only_eq9 = np.sum(np.logical_and(eq9,np.logical_not(eq8)))
         eq8_and_9 = np.sum(np.logical_and(eq9,eq8))
         prune     = np.logical_or(eq8,eq9)
-        not_prune = np.logical_not(prune)
+        keep = np.logical_not(prune)
         logger.info(f'Pruning reason:')
         logger.info(f'\tOnly by eq8:{np.sum(only_eq8)}')
         logger.info(f'\tOnly by eq9:{np.sum(only_eq9)}')
@@ -756,8 +756,8 @@ def area_voronoi_dla(fname,args):
         #
         # Now we remove the ridges that do not satisfy the criteria
         #
-        ridge_points= ridge_points[not_prune]
-        ridge_vertices = ridge_vertices[not_prune]
+        ridge_points= ridge_points[keep]
+        ridge_vertices = ridge_vertices[keep]
         nridges = len(ridge_vertices)
         logger.info(f"Remaining ridges after pruning by criterias (8) and (9): {nridges}")
         np.savez(criteria_data_fname,ridge_vertices=ridge_vertices,ridge_points=ridge_points) 
