@@ -2,13 +2,17 @@
 
 [abstract]
 
-# Usage
+## Usage
 
 To run with default parameters:
+```
 python voronoi.py -i input.png 
+```
 
 To run with custom parameters:
+```
 python voronoi.py -i input.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta
+```
 
 -i input.png                  input image
 -B binarization_mobe          binarization method for non-binary inputs
@@ -19,5 +23,8 @@ python voronoi.py -i input.png -B binarization_mobe -Y binarization_threshold -b
 -a param_Ta                   area threshold
   
 Advanced usage: 
-The source code has extra parameters not included in the demo. To see the full list run:
+The source code has extra parameters not included in the demo. 
+To see the full list run:
+```
 python voronoi.py -h
+```
