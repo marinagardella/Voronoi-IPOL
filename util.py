@@ -41,7 +41,7 @@ def write_img(img_path, img):
 
 
 #===================================================================================================
-# PRETTY PLOTTING
+# Plotting
 #===================================================================================================
 
 color_list = (
@@ -103,8 +103,7 @@ def plot_voronoi(background,
                  draw_points=False,
                  point_color=None):
     """
-    Plot the Voronoi diagram over the input image with colors, labels, and all sorts of
-    fancy stuff.
+    Plot the Voronoi diagram over the input image with colors and labels
     """
     if background.dtype != np.uint8:
         background = (255*background).astype(np.uint8)
