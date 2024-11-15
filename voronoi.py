@@ -281,13 +281,6 @@ def compute_ridge_features(points,labels,ridge_points,logger):
     """
     " compute the features dE and arE for each ridge E
     """
-    #if compiled:
-    #    logger.info(' Using compiled C extension.')
-    #    vorlib.compute_ridge_features(points,labels,ridge_points)
-    #
-    #else:
-    #    logger.info('Compiled extension not found!! Falling back to Python (much slower).')
-
     dE = list()
     arE = list()
     #
@@ -347,12 +340,8 @@ def compute_thresholds(dE,args,logger):
         plt.savefig(f"{args.output}7a_distance_histogram.{args.image_ext}",bbox_inches="tight",dpi=DPI)
         plt.close('all')
     #
-    #
     # The smoothing is done using a window averaging with window size 5 (2w+1 with w=2)
     # The parameter w can be modified via the command line; the default is 2, as in [1]
-    #
-    #
-    #" The paper [1] uses a square filter of size 5 (2w+1 with w=2) to smooth the histogram of distances.
     #
     w = args.parameter_w
     k = np.ones(2*w+1)/(2*w+1)
@@ -362,9 +351,6 @@ def compute_thresholds(dE,args,logger):
     # of the smoothed distance histogram and then 
     # computing the thresholds from these peaks and the parameter 't'.
     #
-    # The problem with the original paper here is that these peaks are not 
-    # completely defined!! 
-    # 
     # Even with smoothing, depending on the input 
     # and the parameters, the 'two largest peaks' might correspond to the same
     # mode of the histogram if there is some noise in the uphill or downhill
@@ -427,10 +413,6 @@ def compute_thresholds(dE,args,logger):
     #
     #
     # the paper proposes a linear interpolation to find this threshold
-    # but this is surely overkill.
-    # we just find the first point where the histogram is below h2.
-    #
-    # note: the user may manually override this value for analysis/testing purposes.
     #
     maxd = len(dist_hist_smoothed)
     if args.parameter_t2 < 0:
@@ -468,8 +450,6 @@ def compute_thresholds(dE,args,logger):
     # a third area threshold is fixed to 40 in the paper.
     # this corresponds (according to [1]) to the largest area ratio between 
     # two characters of the same font and size,
-    # I guess this would be for example between 
-    # a capital M or B or whichever has more 'ink' and a dot (.)
     #
     # logger.info(f'Area threshold: Ta={args.parameter_ta}')
     return t1,t2,args.parameter_ta
@@ -495,11 +475,6 @@ def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
     " this means that the ridge either reaches the border of the image or shares a vertex
     " with another frontier.
     """
-    #if compiled:
-    #    logger.info(' Using compiled C extension.')
-    #    vorlib.prune_by_loop_condition(ridge_vertices,ridge_points)
-    #else:
-    #    logger.warning('Compiled extension NOT found!! Falling back to Python (much slower).')
     iter = 0
     assert(len(ridge_vertices) == len(ridge_points))
     while True:
@@ -636,7 +611,7 @@ def area_voronoi_dla(fname,args):
         if len(pvd.ridge_points) == 1:
             raise VoronoiError("Only two connected components: solution is the only ridge there is")
         #
-        # we extract the relevant data from the Voronoi object
+        # We extract the relevant data from the Voronoi object
         #
         ridge_points = np.array(pvd.ridge_points).astype(np.int32)
         points = pvd.points.astype(np.int32)
@@ -672,7 +647,7 @@ def area_voronoi_dla(fname,args):
         # 5. PRUNING BY FEATURES
         #------------------------------------------------------------------------- 
         #
-        # Now ridges of the Area Voronoi Diagram that separate what is assumed to 
+        # Now ridges of the area Voronoi diagram that separate what is assumed to 
         # be parts of the same text area are removed. This is done using a set of
         # features. These are:
         #
@@ -695,16 +670,10 @@ def area_voronoi_dla(fname,args):
             raise VoronoiError("Error computing thresholds")
         #
         # Now the actual pruning takes place. 
-        # A ridge E is removed if _either_ of the two following conditions hold:
+        # A ridge E is removed if either of the two following conditions hold:
         #
         # i) d(E)/T_{d_1} < 1                   (8)
         # ii) d(E)/T_{d_2} + a_r(E)/T_{a}  < 1  (9)
-        #
-        # Section 4.3 is ambiguous here, because it says that the ridges pruned
-        # are those satisfying eqs. (8) AND (9), but the text right after (8)
-        # and (9) indicates that an edge is pruned if EITHER (8) OR (9) is met.
-        # As the text is more precise when such criteria were introduced, we 
-        # assume that this is an OR, not an AND.
         #
         ta = args.parameter_ta
         eq8, eq9 = eval_pruning_criteria(dE,arE,t1,t2,ta)
@@ -724,10 +693,6 @@ def area_voronoi_dla(fname,args):
         # Here we optionally produce a map where the different pruned ridges are
         # are painted with colors which depend on the conditions used for
         # pruning them. The surviving ridges are also shown.
-        #
-        # only satisfying eq8 gives color (1,1,0) -> yellow 
-        # only satisfying eq9 gives color (1,0,1) -> magenta
-        # satisfying bot eq88 and eq9 gives color (1,0,0) -> red
         # 
         
         if args.save_images == "all" or args.save_images == "important":
@@ -773,8 +738,7 @@ def area_voronoi_dla(fname,args):
         # other directions.
         #
         # The above condition needs to be checked repeatedly, and thus the authors
-        # refer to it as a "loop condition". The name is not very descriptive, as it
-        # the actual "loop condition" is met while there are ridges to prune.
+        # refer to it as a "loop condition". 
         #
         ridge_vertices,ridge_points = prune_by_loop_condition(ridge_vertices,ridge_points,logger)
         nridges = len(ridge_vertices)
