@@ -1,6 +1,6 @@
 # Voronoi diagrams for page segmentation
 
-[abstract]
+Page segmentation is a key task in document processing, enabling effective extraction of structured information from diverse document types. This paper presents an in-depth analysis of the method proposed by Kise et al., a bottom-up approach using area Voronoi diagrams to identify spatial relationships between document components. Our work provides a detailed description of the method, emphasizing clarity, reproducibility, and transparency, particularly regarding aspects not fully specified in the original paper. We highlight the impact of various implementation choices, such as parameter settings and preprocessing steps, on the method's performance. Through extensive testing on diverse document layouts, we demonstrate that the method can handle a wide range of scenarios but exhibits notable sensitivity to specific parameters and document characteristics, especially in handling complex elements like lists, drop-caps, and tables.
 
 ## Usage
 
