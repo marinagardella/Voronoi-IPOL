@@ -12,3 +12,4 @@ myscript.cprof
 *.log
 *.jpg
 *.jpeg
+.DS_Store

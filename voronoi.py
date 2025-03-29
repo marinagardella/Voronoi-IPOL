@@ -1,30 +1,50 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 """
-This program provides an implementation of the Voronoi method for Document Layout Analysis,
-as described in the paper:
+    Voronoi method for Document Layout Analysis
+    Copyright (C) 2025 Marina Gardella & Ignacio Ramírez 
 
-[1] K. Kise, A. Sato, y M. Iwata, 
-    "Segmentation of Page Images Using the Area Voronoi Diagram», Computer Vision and Image Understanding", 
-    vol. 70, n.º 3, pp. 370-382, jun. 1998, doi: 10.1006/cviu.1998.0684.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-The implementation is made as faithful as possible to the original method as described in the paper.
-Tweaks and potential improvements are optionally enabled by the user via command line switches.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-Also, we aim at an efficient and self-contained implementation which is easily portable for comparison with
-other methods.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Finally, the code is thoroughly documented and cross-referenced to the paper.
 
-Authors:
-* Marina Gardella <marigardella@gmail.com>
-* Ignacio Ramírez <nacho@fing.edu.uy>
+    This program provides an implementation of the Voronoi method for 
+    Document Layout Analysis, as described in the paper:
 
-Other papers involved:
+    [1] K. Kise, A. Sato, y M. Iwata, 
+        "Segmentation of Page Images Using the Area Voronoi Diagram»,
+          Computer Vision and Image Understanding", 
+        vol. 70, n.º 3, pp. 370-382, jun. 1998, doi: 10.1006/cviu.1998.0684.
 
-[1] I. Ramírez, “Practical Bulk Denoising Of Large Binary Images,” 
-    in 2022 IEEE International Conference on Image Processing (ICIP), Bordeaux, France: 
-    IEEE, Oct. 2022, pp. 196–200. doi: 10.1109/ICIP46576.2022.9897678.
+    The implementation is made as faithful as possible to the original 
+    method as described in the paper. Tweaks and potential improvements are 
+    optionally enabled by the user via command line switches.
+
+    Also, we aim at an efficient and self-contained implementation which 
+    is easily portable for comparison with other methods.
+
+    Finally, the code is thoroughly documented and cross-referenced to the paper.
+
+    Authors:
+    * Marina Gardella <marigardella@gmail.com>
+    * Ignacio Ramírez <nacho@fing.edu.uy>
+
+    Other papers involved:
+
+    [1] I. Ramírez, “Practical Bulk Denoising Of Large Binary Images,” 
+        in 2022 IEEE International Conference on Image Processing (ICIP), 
+        Bordeaux, France:  IEEE, Oct. 2022, pp. 196–200. 
+        doi: 10.1109/ICIP46576.2022.9897678.
 """
 
 #==============================================================================
@@ -834,7 +854,16 @@ if __name__ == "__main__":
                     help="IF larger than one, restrict parallel processes to this number. ")
     args = ap.parse_args()
 
-
+    print("""    
+----------------------------------------------------------------
+Voronoi Area Diagram for Document Layout Analysis
+----------------------------------------------------------------
+Copyright (C) 2025, Marina Gardella & Ignacio Ramírez
+This program comes with ABSOLUTELY NO WARRANTY. 
+This is free software, and you are welcome to redistribute it
+under certain conditions. See attached LICENSE file for details.
+----------------------------------------------------------------
+""")
     if args.input_image is None and args.input_list is None:
         print("Must specify either an input image or an input image list!")
         ap.print_help()
