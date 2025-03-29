@@ -1,24 +1,135 @@
-# Voronoi diagrams for page segmentation
+# Voronoi method for Document Layout Analysis
 
-Page segmentation is a key task in document processing, enabling effective extraction of structured information from diverse document types. This paper presents an in-depth analysis of the method proposed by Kise et al., a bottom-up approach using area Voronoi diagrams to identify spatial relationships between document components. Our work provides a detailed description of the method, emphasizing clarity, reproducibility, and transparency, particularly regarding aspects not fully specified in the original paper. We highlight the impact of various implementation choices, such as parameter settings and preprocessing steps, on the method's performance. Through extensive testing on diverse document layouts, we demonstrate that the method can handle a wide range of scenarios but exhibits notable sensitivity to specific parameters and document characteristics, especially in handling complex elements like lists, drop-caps, and tables.
+## Copyright information
+
+Voronoi method for Document Layout Analysis
+Copyright (C) 2025 Marina Gardella & Ignacio Ramírez 
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+## Introduction
+
+Page segmentation is a key task in document processing, providing relevant
+structure  information from diverse document types. This paper presents an 
+in-depth analysis and faithful implementation of the method proposed 
+by Kise et al. [1], a bottom-up approach using area Voronoi diagrams to 
+identify spatial relationships between document components. 
+    
+Our work provides a detailed description of the method, emphasizing clarity, 
+reproducibility, and transparency, particularly regarding aspects not fully 
+or clearly specified in the original paper. We highlight the impact of various 
+implementation choices, such as parameter settings and preprocessing steps,
+on the method's performance. 
+    
+Through extensive testing on diverse document layouts, we demonstrate that
+the method can handle a wide range of scenarios but exhibits notable 
+sensitivity to specific parameters and document characteristics, 
+especially in handling complex elements like lists, drop-caps, and tables.
+
+[1] K. Kise, A. Sato, y M. Iwata, 
+    "Segmentation of Page Images Using the Area Voronoi Diagram»,
+    Computer Vision and Image Understanding", 
+    vol. 70, n.º 3, pp. 370-382, jun. 1998, doi: 10.1006/cviu.1998.0684.
+
+The implementation is made as faithful as possible to the original 
+method as described in the paper. Tweaks and potential improvements are 
+optionally enabled by the user via command line switches.
+
+Also, we aim at an efficient and self-contained implementation which 
+is easily portable for comparison with other methods.
+
+Authors:
+* Marina Gardella <marigardella@gmail.com>
+* Ignacio Ramírez <nacho@fing.edu.uy>
+
+## Structure of the code and cross-reference with the paper
+
+The code is organized in two files: `voronoi.py` and `util.py`.
+A
+n additional folder `data` contains sample input data: `lorem.png`,
+ `dropcaps.jpg` and `test.list` for testing purposes. 
+ 
+ Finally a `fig` folder contains some auxiliary
+images that the code uses for creating some of the figures that
+it can produce together with the actual output of the algorithm.
+
+The file `util.py`  does not need much explanation; it contains a few
+utilty functions such as logging, reading and writing images, etc.
+
+The core file `voronoi.py`,  is also the main entry point for the program, 
+that is, the one that should be run (as described un the Usage Section 
+below). The functions in  `voronoiy.py` map one-to-one with the
+ algorithms described in the paper, with a few exceptions. Below is a detailed
+ list of the functions and their mappings, if any. Notice that we do not
+ provide nor describe the list of arguments in each case; this is left to the 
+ Python code documentation within the file.
+
+* `get_binary_image()`: binarizes the input image
+* `get_connected_components()`: obtains the connected components of the binarized input image
+* `get_borders()`: extracts the borders of the connected components found in the  binarized input image
+* `sample_border_points()`: obtains a subsample of the borders of the connected components found in the binarized input image
+* `get_point_voronoi()`: computes the Point Voronoi Diagram from a set of points
+* `eval_redundancy_criterion()`: implements Algorithm 2 in the paper
+* `compute_ridge_features()`: implements Algorithm 3 in the paper
+* `compute_thresholds()`: implements Algorithm 4 in the paper
+* `eval_pruning_criteria()`: implements Algorithm 5 in the paper
+* `eval_loop_condition(ridge_vertices)`: implements algorithm 6 in the paper
+* `prune_by_loop_condition()`: implements Algorithm 7 in the paper
+* `area_voronoi_dla()`: implements Algorithm 1 in the paper
+* `area_voronoi_dla_mp()`: multi-process dispatcher for batch inputs.
 
 ## Usage
 
-### To run with default parameters:
+The program can be executed on single or multiple (batch) input images.
+
+
+In the second case, a list file must be provided with the input switch `-L` or `--list <list_file>` where `list file` is a plain text file whose contents are paths to input images, one per line. The paths in the list file are relative to a `base_dir` which by default is the current directory. In the latter case, the program will run in parallel mode, executing one image per thread. 
+
+### Single image, default parameters:
+
+For single inputs one must provide the path to the image with the switch `-i` or `--input`. The default output(s) will have `voronoi` as a filename prefix and will be stored in the current directory. This can be changed with the `--output` switch:
+
 ```
-python voronoi.py -i input.png 
+python voronoi.py -i data/lorem.png
 ```
 
-### To run with custom parameters:
+### Single image, custom parameters:
+
+Several options are provided in the command line. See `--help` for a list. An example execution with such options is given by:
 ```
-python voronoi.py -i input.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta
+python voronoi.py -i data/lorem.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta -o lorem_ipsum_
 ```
 
-Arguments:
+### Multiple input images:
+
+If the input is a list file, each file in the list will be processed in sequence. If multiple processors/threads are available, the images will be distributed among them to speed up the process. In this case it is recommended to specify an output directory for the many output files that will be produced. In the example below (which can readily be run), an `output` folder will be created, and subfolders within it will store the output from each image in the list, using their basename as subfolder name.
+
+```
+./voronoi.py -L data/test.list -d data -o output
+```
+
+### List of main arguments
+
+See `--help` for a full list of parameters. Below we provide the most interesting ones.
+
 
 | Flag           | Value                   | Description                                                                                              |
 | :--------------| :-----------------------| :------------------------------------------------------------------------------------------------------- |
-| -i             | input.png               | input image                                                                                              |
+| -i             | input image             | input image                                                                                              |
+| -L             | list file               | input image list                                                                                         |
+| -o             | output path             | output name prefix for single images, output path for multiple inputs                                    |
 | -B             | binarization_mode       | binarization method for non-binary inputs                                                                |
 | -Y             | binarization_threshold  | binarization threshold (if needed)                                                                       |
 | -b             | param_N                 | denoising parameter (remove all blobs whose size is smaller than the specified value)                    |
@@ -32,4 +143,10 @@ The source code has extra parameters not included in the IPOL demo.
 To see the full list run:
 ```
 python voronoi.py -h
+```
+
+### Example usage
+
+```
+python voronoi.py -i data/test.png
 ```
