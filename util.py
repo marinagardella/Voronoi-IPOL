@@ -16,9 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os
 import logging
-import time
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -27,9 +25,36 @@ from matplotlib import patches as mpatches
 from matplotlib import colors
 from PIL import Image, ImageDraw
 
+class VoronoiError(Exception):
+    """
+    " Exception class for Voronoi errors
+    """
+    def __init__(self,msg):
+        super().__init__(msg)
+
 #===================================================================================================
 # Utility functions
 #===================================================================================================
+
+def get_logger(fname):
+    """
+    Create a logger object
+    """
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("VORONOI")
+    flog = open(fname,'w')
+    logger.addHandler(logging.StreamHandler(flog))
+    return logger
+
+
+def close_logger(logger):
+    """
+    Close a logger object
+    """
+    if logger is not None:
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+            handler.close()
 
 
 def read_img(img_path):

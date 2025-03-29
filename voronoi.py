@@ -83,33 +83,7 @@ DPI = 150
 # FUNCTIONS
 #==============================================================================
 #
-class VoronoiError(Exception):
-    """
-    " Exception class for Voronoi errors
-    """
-    def __init__(self,msg):
-        super().__init__(msg)
 
-
-def get_logger(fname):
-    """
-    Create a logger object
-    """
-    logging.basicConfig(level=logging.INFO)
-    logging.getLogger("VORONOI")
-    flog = open(fname,'w')
-    logger.addHandler(logging.StreamHandler(flog))
-    return logger
-
-
-def close_logger(logger):
-    """
-    Close a logger object
-    """
-    if logger is not None:
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-            handler.close()
 
 
 def get_binary_image(img,args,logger):
@@ -167,6 +141,10 @@ def get_binary_image(img,args,logger):
 
 
 def get_connected_components(img,args,logger):
+    """
+    " Obtain the connected components of the binary image,
+    " optionally removing large areas.
+    """
     #
     # OPTIONAL STEP: remove small blobs
     #
