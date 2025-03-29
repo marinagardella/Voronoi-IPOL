@@ -280,6 +280,7 @@ def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
     " prune ridges that are not separating different connected components
     " this means that the two input points that generate the ridge belong to 
     " the same connected component.
+    " Corresponds to the pseudocode detailed in Algorithm 2 of the IPOL paper.
     """
     assert(len(ridge_points) == len(ridge_vertices))
     nridges = len(ridge_points)
@@ -300,6 +301,7 @@ def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
 def compute_ridge_features(points,labels,ridge_points,logger):
     """
     " compute the features dE and arE for each ridge E
+    " Corresponds to the pseudocode detailed in Algorithm 3 of the IPOL paper.
     """
     dE = list()
     arE = list()
@@ -346,7 +348,8 @@ def compute_ridge_features(points,labels,ridge_points,logger):
 
 def compute_thresholds(dE,args,logger):
     """
-    " Compute the distance thresholds t1 and t2, and the area threshold ta
+    " Compute the distance thresholds t1 and t2, and the area threshold ta.
+    " Corresponds to the pseudocode detailed in Algorithm 4 of the IPOL paper.
     """
     dist_hist = np.bincount(dE) # discrete valued histogram
     if args.save_images == "all":
@@ -476,6 +479,11 @@ def compute_thresholds(dE,args,logger):
 
 
 def eval_pruning_criteria(dE, arE, t1, t2, ta):
+    """
+    " Evaluates pruning critaria for each ridge E.
+    " These are detailed in Equations (8) and (9) of the IPOL paper.
+    " Corresponds to the pseudocode detailed in Algorithm 5 of the IPOL paper.
+    """
     assert(len(dE) == len(arE))
     N = len(dE)
     satisfies_eq8 = [d<= t1 for d in dE]
@@ -484,6 +492,10 @@ def eval_pruning_criteria(dE, arE, t1, t2, ta):
 
 
 def eval_loop_condition(ridge_vertices):
+    """
+    " Marks ridges that do not define a frontier between text areas for deletion.
+    " Corresponds to the pseudocode detailed in Algorithm 6 of the IPOL paper.
+    """
     v,n = np.unique(ridge_vertices,return_counts=True)
     shared = v[n > 1]
     return [(rv[0] == -1 or rv[0] in shared) and (rv[1] == -1 or rv[1] in shared) for rv in ridge_vertices]
@@ -491,9 +503,10 @@ def eval_loop_condition(ridge_vertices):
 
 def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
     """
-    " prune ridges that do not belong to the frontier between text areas.
+    " Prune ridges that do not belong to the frontier between text areas.
     " this means that the ridge either reaches the border of the image or shares a vertex
     " with another frontier.
+    " Corresponds to the pseudocode detailed in Algorithm 7 of the IPOL paper.
     """
     iter = 0
     assert(len(ridge_vertices) == len(ridge_points))
@@ -513,7 +526,8 @@ def prune_by_loop_condition(ridge_vertices,ridge_points,logger):
 
 def area_voronoi_dla(fname,args):
     """
-    " Main algorithm defined in paper [1]
+    " Main algorithm defined in the original paper [1].
+    " Implements Algorithm 1 in the accompaining IPOL paper.
     """
     #
     #------------------------------------------------------------------------- 
