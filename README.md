@@ -58,7 +58,7 @@ Authors:
 
 The code is organized in two files: `voronoi.py` and `util.py`.
 A
-n additional folder `data` contains sample input data: `lorem.png`,
+n additional folder `data` contains sample input data: `test1.png`,
  `dropcaps.jpg` and `test.list` for testing purposes. 
  
  Finally a `fig` folder contains some auxiliary
@@ -102,14 +102,14 @@ In the second case, a list file must be provided with the input switch `-L` or `
 For single inputs one must provide the path to the image with the switch `-i` or `--input`. The default output(s) will have `voronoi` as a filename prefix and will be stored in the current directory. This can be changed with the `--output` switch:
 
 ```
-python voronoi.py -i data/lorem.png
+python voronoi.py -i data/test1.png
 ```
 
 ### Single image, custom parameters:
 
 Several options are provided in the command line. See `--help` for a list. An example execution with such options is given by:
 ```
-python voronoi.py -i data/lorem.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta -o lorem_ipsum_
+python voronoi.py -i data/test1.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta -o test1_ipsum_
 ```
 
 ### Multiple input images:
