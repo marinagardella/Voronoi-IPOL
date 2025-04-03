@@ -112,7 +112,7 @@ The program can be executed on single or multiple (batch) input images.
 For single inputs one must provide the path to the image with the switch `-i` or `--input`. The default output(s) will have `voronoi` as a filename prefix and will be stored in the current directory. This can be changed with the `--output` switch:
 
 ```
-python voronoi.py -i data/test1.png
+python3 voronoi.py -i data/test1.png
 ```
 
 ### Single image, custom parameters:
