@@ -255,7 +255,7 @@ def get_point_voronoi(border_points,args,logger):
 
 def eval_redundancy_criterion(points,labels,ridge_points,ridge_vertices):
     """
-    " prune ridges that are not separating different connected components
+    " Prune ridges that are not separating different connected components
     " this means that the two input points that generate the ridge belong to 
     " the same connected component.
     " Corresponds to the pseudocode detailed in Algorithm 2 of the IPOL paper.
@@ -310,14 +310,6 @@ def compute_ridge_features(points,labels,ridge_points,logger):
     #
     # now dE is the minimum value of dr among all the ridges that separate
     # the same two components. We compute such value for each pair of separated components
-    #
-    #for key in separating_comp_dists.keys():
-    #    dE = separating_comp_dists[key]
-    #    dE = int(round(np.min(dE)))
-    #    separating_comp_dists[key] = dE
-    #
-    # and then overwrite the value of dE for those ridges E which separate the same
-    # two  separating components
     #
     dE = np.array([ separating_comp_dists[key] for key in separating_comp_keys],dtype=np.int32)
     arE = np.array(arE,np.float32)
