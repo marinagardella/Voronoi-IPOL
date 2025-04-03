@@ -801,9 +801,9 @@ if __name__ == "__main__":
     ap.add_argument("-l","--log-file", default='voronoi.log', 
                     help="Path to output log file.")
     ap.add_argument("-B", "--binarization-method", type=str, default="otsu", 
-                    help="Binarization method for non-binary input images.")
+                    help="Binarization method for non-binary input images. Possible values are 'otsu', 'threshold' and 'local'. Defaults to 'otsu'.")
     ap.add_argument("-Y", "--binarization-param", type=float, default=0.5, 
-                    help="For binarization methods which require a parameter, this is it.")
+                    help="Parameter of the binarization method. 'otsu' and 'local' do not require parameters. For 'threshold', this is a pixel intensity in the range 0-255.")
     ap.add_argument("-b", "--remove-blobs", type=int, default=4, 
                     help="If set to a value larger than zero, this will remove all blobs whose size is smaller than the specified value.")
     ap.add_argument("-v", "--verbose", action="store_true", 

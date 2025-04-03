@@ -90,12 +90,22 @@ below). The functions in  `voronoiy.py` map one-to-one with the
 * `area_voronoi_dla()`: implements Algorithm 1 in the paper
 * `area_voronoi_dla_mp()`: multi-process dispatcher for batch inputs.
 
+## Installation
+
+The program is written in Python 3.9 and depends on the following additional packages:
+
+* matplotlib
+* numpy
+* scipy
+* scikit-image
+
+The `requirements.txt` package contains a full specification of the dependencies 
+together with matching package versions. The dependencies can be installed via 
+`pip` using `pip install -r requirements.txt`.
+
 ## Usage
 
 The program can be executed on single or multiple (batch) input images.
-
-
-In the second case, a list file must be provided with the input switch `-L` or `--list <list_file>` where `list file` is a plain text file whose contents are paths to input images, one per line. The paths in the list file are relative to a `base_dir` which by default is the current directory. In the latter case, the program will run in parallel mode, executing one image per thread. 
 
 ### Single image, default parameters:
 
@@ -107,9 +117,10 @@ python voronoi.py -i data/test1.png
 
 ### Single image, custom parameters:
 
-Several options are provided in the command line. See `--help` for a list. An example execution with such options is given by:
+Several options are provided in the command line. See `--help` for a list. For example, the following command applies the method using a thresholding by intensity (`-B threshold`) where pixel values below 128 are considered background (`-Y 128`), removes blobs whose size are smaller than 5 pixels (`-b 8`), sub-samples the borders of the components so that 20% (`-r 0.2`) and uses a window of radius 3 to smooth the distance histogram (`-w 3`), and the output is saved with prefix `test1_` to the local folder:
 ```
-python voronoi.py -i data/test1.png -B binarization_mobe -Y binarization_threshold -b param_N -r param_rho -w param_w -a param_Ta -o test1_ipsum_
+python3 voronoi.py -i data/test1.png -B threshold -Y 128 -b 8 -r 0.2 -w 3 -o test1 data/test1
+
 ```
 
 ### Multiple input images:
@@ -117,7 +128,7 @@ python voronoi.py -i data/test1.png -B binarization_mobe -Y binarization_thresho
 If the input is a list file, each file in the list will be processed in sequence. If multiple processors/threads are available, the images will be distributed among them to speed up the process. In this case it is recommended to specify an output directory for the many output files that will be produced. In the example below (which can readily be run), an `output` folder will be created, and subfolders within it will store the output from each image in the list, using their basename as subfolder name.
 
 ```
-./voronoi.py -L data/test.list -d data -o output
+python3 voronoi.py -L data/test.list -d data -o output
 ```
 
 ### List of main arguments
@@ -139,10 +150,11 @@ See `--help` for a full list of parameters. Below we provide the most interestin
 
   
 ### Advanced usage: 
+
 The source code has extra parameters not included in the IPOL demo. 
 To see the full list run:
 ```
-python voronoi.py -h
+python3 voronoi.py -h
 ```
 
 ### Example usage
